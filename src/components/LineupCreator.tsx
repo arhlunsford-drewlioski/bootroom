@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import type { Player, LineupEntry } from '../db/database';
+import type { Player, LineupEntry, LineupTemplate } from '../db/database';
 import { posthog } from '../analytics';
 import SoccerField from './SoccerField';
 import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT, getDetectionThreshold, getFormation, detectFormation } from './formations';
@@ -21,7 +21,9 @@ import ConfirmDialog from './ui/ConfirmDialog';
 type DragOrigin = 'roster' | 'bench' | 'field';
 
 interface LineupCreatorProps {
+  /** When set, opens the builder for this match's lineup */
   initialMatchId?: number | null;
+  /** Callback to go back to the match detail modal */
   onBackToMatch?: (matchId: number) => void;
 }
 
@@ -35,6 +37,17 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     () => (team?.id ? db.matches.where('teamId').equals(team.id).toArray() : []),
     [team?.id],
   ) ?? [];
+  const templates = useLiveQuery(
+    () => (team?.id ? db.lineupTemplates.where('teamId').equals(team.id).toArray() : []),
+    [team?.id],
+  ) ?? [];
+
+  // Mode: 'library' (default) or 'builder' (editing a lineup)
+  const [mode, setMode] = useState<'library' | 'builder'>(initialMatchId ? 'builder' : 'library');
+
+  // Template being edited (null = match lineup or new template)
+  const [editingTemplateId, setEditingTemplateId] = useState<number | null>(null);
+  const [templateName, setTemplateName] = useState('');
 
   // Match metadata
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
@@ -89,6 +102,7 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<'match' | 'template'>('match');
 
   // Refs for hit testing
   const fieldRef = useRef<SVGSVGElement | null>(null);
@@ -97,15 +111,16 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
   // Reset formation when game format loads (only if no match selected)
   useEffect(() => {
-    if (!selectedMatchId) {
+    if (!selectedMatchId && !editingTemplateId) {
       setFormationId(defaultFormationId);
     }
-  }, [defaultFormationId, selectedMatchId]);
+  }, [defaultFormationId, selectedMatchId, editingTemplateId]);
 
   // Load initial match when prop changes
   useEffect(() => {
     if (initialMatchId != null && matches.length > 0 && selectedMatchId !== initialMatchId) {
       loadMatch(initialMatchId);
+      setMode('builder');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMatchId, matches.length]);
@@ -163,6 +178,7 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
   function loadMatch(matchId: number | null) {
     setSelectedMatchId(matchId);
+    setEditingTemplateId(null);
     if (matchId == null) {
       setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
       setAssignments({}); setBench([]); setFormationId(defaultFormationId);
@@ -197,6 +213,42 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     setShowMatchForm(false);
   }
 
+  function loadTemplate(template: LineupTemplate) {
+    setEditingTemplateId(template.id ?? null);
+    setSelectedMatchId(null);
+    setTemplateName(template.name);
+    if (template.formation && getFormation(template.formation)) {
+      setFormationId(template.formation);
+    } else {
+      setFormationId(defaultFormationId);
+    }
+    const newAssignments: Record<string, number> = {};
+    const newRoleOverrides: Record<string, string> = {};
+    for (const entry of template.positions ?? []) {
+      newAssignments[entry.slotId] = entry.playerId;
+      if (entry.roleTag) newRoleOverrides[entry.slotId] = entry.roleTag;
+    }
+    setAssignments(newAssignments);
+    setRoleOverrides(newRoleOverrides);
+    setBench(template.bench ?? []);
+    setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
+    setOpponentTraits([]);
+    setEditingRoleSlotId(null);
+    setShowMatchForm(false);
+    setMode('builder');
+  }
+
+  function startNewTemplate() {
+    setEditingTemplateId(null);
+    setSelectedMatchId(null);
+    setTemplateName('');
+    setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
+    setAssignments({}); setBench([]); setFormationId(defaultFormationId);
+    setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
+    setShowMatchForm(false);
+    setMode('builder');
+  }
+
   function changeFormation(newId: string) {
     const newFormation = getFormation(newId);
     if (!newFormation) return;
@@ -220,14 +272,28 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
   function deleteMatch() {
     if (!selectedMatchId) return;
+    setDeleteTarget('match');
     setShowDeleteConfirm(true);
   }
 
-  async function confirmDeleteMatch() {
-    if (!selectedMatchId) return;
-    await db.matches.delete(selectedMatchId);
-    setShowDeleteConfirm(false);
-    loadMatch(null);
+  function deleteTemplate() {
+    if (!editingTemplateId) return;
+    setDeleteTarget('template');
+    setShowDeleteConfirm(true);
+  }
+
+  async function confirmDelete() {
+    if (deleteTarget === 'match' && selectedMatchId) {
+      await db.matches.delete(selectedMatchId);
+      setShowDeleteConfirm(false);
+      loadMatch(null);
+      setMode('library');
+    } else if (deleteTarget === 'template' && editingTemplateId) {
+      await db.lineupTemplates.delete(editingTemplateId);
+      setShowDeleteConfirm(false);
+      setEditingTemplateId(null);
+      setMode('library');
+    }
   }
 
   async function saveLineup() {
@@ -236,25 +302,57 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       ([slotId, playerId]) => ({ slotId, playerId, roleTag: roleOverrides[slotId] || undefined }),
     );
     const detected = detectFormation(formation.slots.filter(s => assignments[s.id] != null));
+
     if (selectedMatchId) {
+      // Saving a match lineup
       await db.matches.update(selectedMatchId, {
         opponent, date: matchDate, time: matchTime, location: location || undefined,
         lineup: lineupEntries, bench, formation: detected || formationId,
         opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
       });
       posthog.capture('lineup_saved');
-    } else {
-      if (!opponent || !matchDate || !matchTime) return;
-      const id = await db.matches.add({
-        teamId: team.id, opponent, date: matchDate, time: matchTime,
-        location: location || undefined, lineup: lineupEntries, bench,
+    } else if (editingTemplateId) {
+      // Updating existing template
+      await db.lineupTemplates.update(editingTemplateId, {
+        name: templateName || `${detected || formationId} Template`,
         formation: detected || formationId,
-        opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
+        positions: lineupEntries,
+        bench,
       });
-      setSelectedMatchId(id as number);
-      posthog.capture('match_created');
-      posthog.capture('lineup_saved');
+    } else if (templateName || Object.keys(assignments).length > 0) {
+      // Creating new template
+      const name = templateName || `${detected || formationId} Template`;
+      const id = await db.lineupTemplates.add({
+        teamId: team.id,
+        name,
+        formation: detected || formationId,
+        positions: lineupEntries,
+        bench,
+        createdAt: new Date().toISOString(),
+      });
+      setEditingTemplateId(id as number);
     }
+
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1500);
+  }
+
+  async function saveMatchLineupAsTemplate() {
+    if (!team?.id || !selectedMatchId) return;
+    const lineupEntries: LineupEntry[] = Object.entries(assignments).map(
+      ([slotId, playerId]) => ({ slotId, playerId, roleTag: roleOverrides[slotId] || undefined }),
+    );
+    const detected = detectFormation(formation.slots.filter(s => assignments[s.id] != null));
+    const name = `${opponent} ${matchDate} (${detected || formationId})`;
+    await db.lineupTemplates.add({
+      teamId: team.id,
+      name,
+      formation: detected || formationId,
+      positions: lineupEntries,
+      bench,
+      matchId: selectedMatchId,
+      createdAt: new Date().toISOString(),
+    });
     setSaveFlash(true);
     setTimeout(() => setSaveFlash(false), 1500);
   }
@@ -459,9 +557,74 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     );
   }
 
+  // ════════════════════════════════════════
+  // LIBRARY VIEW
+  // ════════════════════════════════════════
+  if (mode === 'library') {
+    const sortedTemplates = [...templates].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-txt tracking-wide font-display">LINEUPS</h2>
+          <Button onClick={startNewTemplate}>+ Create Lineup</Button>
+        </div>
+
+        {sortedTemplates.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="text-txt-faint text-sm mb-2">No saved lineups yet.</p>
+            <p className="text-txt-faint text-xs mb-4">Create a lineup template to reuse across matches.</p>
+            <Button onClick={startNewTemplate}>+ Create Lineup</Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {sortedTemplates.map(t => {
+              const linkedMatch = t.matchId ? matches.find(m => m.id === t.matchId) : null;
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => loadTemplate(t)}
+                  className="bg-surface-1 rounded-lg border border-surface-5 hover:border-surface-4 transition-colors cursor-pointer px-4 py-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-txt truncate">{t.name}</span>
+                        <span className="text-[10px] text-accent font-mono font-bold">{t.formation}</span>
+                      </div>
+                      <div className="text-[10px] text-txt-faint mt-1 flex items-center gap-2">
+                        <span>{t.positions.length} players</span>
+                        {t.bench && t.bench.length > 0 && (
+                          <span>+ {t.bench.length} bench</span>
+                        )}
+                        {linkedMatch && (
+                          <span className="text-accent/60">
+                            from vs {linkedMatch.opponent}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-txt-faint shrink-0">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════
+  // BUILDER VIEW
+  // ════════════════════════════════════════
   const sortedMatches = [...matches].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const assignedCount = Object.keys(assignments).length;
-  const canSave = opponent && matchDate && matchTime;
+  const isMatchMode = selectedMatchId != null;
+  const isTemplateMode = !isMatchMode;
+  const canSave = isMatchMode ? (opponent && matchDate && matchTime) : true;
 
   return (
     <div
@@ -472,31 +635,52 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     >
       {/* ═══ TOP BAR ═══ */}
       <div className="space-y-2 mb-3">
-        {/* Row 1: Back + Match selector + Formation */}
+        {/* Row 1: Back + context */}
         <div className="flex items-center gap-2 flex-wrap">
-          {onBackToMatch && selectedMatchId && (
+          {onBackToMatch && selectedMatchId ? (
             <button
               onClick={() => onBackToMatch(selectedMatchId)}
               className="text-sm text-txt-muted hover:text-accent transition-colors mr-1"
             >
-              &larr; Back
+              &larr; Back to Match
+            </button>
+          ) : (
+            <button
+              onClick={() => setMode('library')}
+              className="text-sm text-txt-muted hover:text-accent transition-colors mr-1"
+            >
+              &larr; Lineup Library
             </button>
           )}
 
-          <Select
-            value={selectedMatchId ?? ''}
-            onChange={(e) => loadMatch(e.target.value ? Number(e.target.value) : null)}
-            className="flex-1 min-w-0 sm:flex-none sm:w-56"
-          >
-            <option value="">+ New Match</option>
-            {sortedMatches.map(m => {
-              const raw = m.date as unknown;
-              const dateStr = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(m.date);
-              return (
-                <option key={m.id} value={m.id}>{dateStr} vs {m.opponent}</option>
-              );
-            })}
-          </Select>
+          {isMatchMode && (
+            <Select
+              value={selectedMatchId ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val) loadMatch(Number(val));
+              }}
+              className="flex-1 min-w-0 sm:flex-none sm:w-56"
+            >
+              {sortedMatches.map(m => {
+                const raw = m.date as unknown;
+                const dateStr = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(m.date);
+                return (
+                  <option key={m.id} value={m.id}>{dateStr} vs {m.opponent}</option>
+                );
+              })}
+            </Select>
+          )}
+
+          {isTemplateMode && (
+            <Input
+              type="text"
+              placeholder="Lineup name (e.g. 4-3-3 Pressing XI)"
+              value={templateName}
+              onChange={e => setTemplateName(e.target.value)}
+              className="flex-1 min-w-0 sm:flex-none sm:w-64"
+            />
+          )}
 
           <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
             {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
@@ -518,12 +702,14 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
         {/* Row 2: Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowMatchForm(!showMatchForm)}
-            className={`text-xs px-2 py-1 rounded transition-colors ${showMatchForm ? 'bg-surface-3 text-accent' : 'text-txt-faint hover:text-txt'}`}
-          >
-            {showMatchForm ? 'Hide Details' : 'Match Info'}
-          </button>
+          {isMatchMode && (
+            <button
+              onClick={() => setShowMatchForm(!showMatchForm)}
+              className={`text-xs px-2 py-1 rounded transition-colors ${showMatchForm ? 'bg-surface-3 text-accent' : 'text-txt-faint hover:text-txt'}`}
+            >
+              {showMatchForm ? 'Hide Details' : 'Match Info'}
+            </button>
+          )}
 
           <button
             onClick={() => setDrawerOpen(!drawerOpen)}
@@ -539,6 +725,16 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
             </svg>
             <span className="hidden sm:inline">Squad</span>
           </button>
+
+          {isMatchMode && selectedMatchId && (
+            <button
+              onClick={saveMatchLineupAsTemplate}
+              className="text-xs px-2 py-1 rounded text-txt-faint hover:text-accent transition-colors"
+              title="Save this lineup as a reusable template"
+            >
+              Save as Template
+            </button>
+          )}
 
           <div className="ml-auto flex items-center gap-2">
             <Button
@@ -568,14 +764,14 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
               disabled={!canSave}
               className={`px-3 sm:px-4 transition-all ${saveFlash ? '!bg-emerald-500 !text-white' : ''}`}
             >
-              {saveFlash ? 'Saved!' : selectedMatchId ? 'Save' : 'Create'}
+              {saveFlash ? 'Saved!' : (editingTemplateId || selectedMatchId) ? 'Save' : 'Create'}
             </Button>
           </div>
         </div>
       </div>
 
       {/* ═══ MATCH DETAILS (collapsible) ═══ */}
-      {showMatchForm && (
+      {isMatchMode && showMatchForm && (
         <div className="bg-surface-1 rounded-lg border border-surface-5 p-3 mb-3 space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Input type="text" placeholder="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} />
@@ -612,6 +808,15 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
               Delete Match
             </button>
           )}
+        </div>
+      )}
+
+      {/* Template delete option */}
+      {isTemplateMode && editingTemplateId && (
+        <div className="mb-3 flex justify-end">
+          <button onClick={deleteTemplate} className="text-xs text-txt-faint hover:text-red-400 transition-colors">
+            Delete Template
+          </button>
         </div>
       )}
 
@@ -720,22 +925,32 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
             {drawerTab === 'details' && (
               <div className="overflow-y-auto space-y-3 flex-1 text-xs">
-                <div>
-                  <span className="text-txt-faint">Opponent:</span>
-                  <span className="text-txt ml-1">{opponent || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-txt-faint">Date:</span>
-                  <span className="text-txt ml-1">{matchDate || '—'}</span>
-                </div>
-                <div>
-                  <span className="text-txt-faint">Time:</span>
-                  <span className="text-txt ml-1">{matchTime ? to12Hour(matchTime) : '—'}</span>
-                </div>
-                <div>
-                  <span className="text-txt-faint">Location:</span>
-                  <span className="text-txt ml-1">{location || '—'}</span>
-                </div>
+                {isMatchMode && (
+                  <>
+                    <div>
+                      <span className="text-txt-faint">Opponent:</span>
+                      <span className="text-txt ml-1">{opponent || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-txt-faint">Date:</span>
+                      <span className="text-txt ml-1">{matchDate || '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-txt-faint">Time:</span>
+                      <span className="text-txt ml-1">{matchTime ? to12Hour(matchTime) : '—'}</span>
+                    </div>
+                    <div>
+                      <span className="text-txt-faint">Location:</span>
+                      <span className="text-txt ml-1">{location || '—'}</span>
+                    </div>
+                  </>
+                )}
+                {isTemplateMode && (
+                  <div>
+                    <span className="text-txt-faint">Template:</span>
+                    <span className="text-txt ml-1">{templateName || 'Unnamed'}</span>
+                  </div>
+                )}
                 {opponentTraits.length > 0 && (
                   <div>
                     <span className="text-txt-faint block mb-1">Scouting:</span>
@@ -825,11 +1040,11 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
       <ConfirmDialog
         open={showDeleteConfirm}
-        title="Delete Match"
-        message="Delete this match? This cannot be undone."
+        title={deleteTarget === 'match' ? 'Delete Match' : 'Delete Template'}
+        message={deleteTarget === 'match' ? 'Delete this match? This cannot be undone.' : 'Delete this lineup template? This cannot be undone.'}
         confirmLabel="Delete"
         variant="danger"
-        onConfirm={confirmDeleteMatch}
+        onConfirm={confirmDelete}
         onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/database';
 import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
+import MatchesList from './components/MatchesList';
 import LineupCreator from './components/LineupCreator';
 import Calendar from './components/calendar';
 import DayView from './components/DayView';
@@ -30,7 +31,6 @@ function App() {
     if (matchId) {
       setSelectedMatchId(matchId);
     } else {
-      setLineupMatchId(null);
       setCurrentView('matches');
     }
   };
@@ -97,6 +97,7 @@ function App() {
               {navItem('dashboard', 'Dashboard')}
               {navItem('team', 'Team')}
               {navItem('matches', 'Matches')}
+              {navItem('lineups', 'Lineups')}
               {navItem('calendar', 'Calendar', isDayFromCalendar)}
               {navItem('season', 'Season')}
               <div className="border-t border-surface-5 mt-2 pt-2">
@@ -113,6 +114,7 @@ function App() {
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
+            {navItem('lineups', 'Lineups')}
             {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
             <div className="border-t border-surface-5 mt-2 pt-2">
@@ -133,6 +135,12 @@ function App() {
           )}
           {currentView === 'team' && <TeamSetup />}
           {currentView === 'matches' && (
+            <MatchesList
+              teamId={teamId}
+              onSelectMatch={(matchId) => setSelectedMatchId(matchId)}
+            />
+          )}
+          {currentView === 'lineups' && (
             <LineupCreator
               initialMatchId={lineupMatchId}
               onBackToMatch={(matchId) => {
@@ -173,7 +181,7 @@ function App() {
           onOpenLineup={() => {
             setLineupMatchId(selectedMatchId);
             setSelectedMatchId(null);
-            setCurrentView('matches');
+            setCurrentView('lineups');
           }}
         />
       )}

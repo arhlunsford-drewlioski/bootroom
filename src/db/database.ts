@@ -24,10 +24,21 @@ export interface LineupEntry {
   roleTag?: string;
 }
 
+export interface Opponent {
+  id?: number;
+  teamId: number;
+  name: string;
+  notes?: string;
+  strengths?: string;
+  traits?: string[];
+}
+
 export interface Match {
   id?: number;
   teamId: number;
   opponent: string;
+  opponentId?: number;
+  isHome?: boolean;
   date: string;
   time: string;
   location?: string;
@@ -50,6 +61,17 @@ export interface SessionNote {
   text: string;
   timestamp: string;
   tags?: string[];
+}
+
+export interface LineupTemplate {
+  id?: number;
+  teamId: number;
+  name: string;
+  formation: string;
+  positions: LineupEntry[];
+  bench?: number[];
+  matchId?: number;
+  createdAt: string;
 }
 
 export interface Practice {
@@ -88,6 +110,8 @@ class BootroomDatabase extends Dexie {
   matches!: Table<Match>;
   practices!: Table<Practice>;
   seasonBlocks!: Table<SeasonBlock>;
+  opponents!: Table<Opponent>;
+  lineupTemplates!: Table<LineupTemplate>;
 
   constructor() {
     super('BootroomDB');
@@ -110,6 +134,15 @@ class BootroomDatabase extends Dexie {
           team.gameFormat = '11v11';
         }
       });
+    });
+    this.version(3).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId'
     });
   }
 }

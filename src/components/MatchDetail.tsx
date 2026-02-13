@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import type { SessionNote } from '../db/database';
+import type { SessionNote, LineupTemplate } from '../db/database';
 import { to12Hour } from '../utils/time';
 import { TACTICAL_INTENT_TAGS, KEY_MATCH_TAGS, TACTICAL_TAGS } from '../constants/tags';
 import Button from './ui/Button';
@@ -30,6 +30,12 @@ function formatResult(goalsFor: number | undefined, goalsAgainst: number | undef
 
 export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDetailProps) {
   const match = useLiveQuery(() => db.matches.get(matchId), [matchId]);
+  const team = useLiveQuery(() => db.teams.toCollection().first(), []);
+
+  const templates = useLiveQuery(
+    () => (team?.id ? db.lineupTemplates.where('teamId').equals(team.id).toArray() : []),
+    [team?.id],
+  ) ?? [];
 
   const [goalsFor, setGoalsFor] = useState<string>('');
   const [goalsAgainst, setGoalsAgainst] = useState<string>('');
@@ -41,6 +47,10 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
   const [keyTags, setKeyTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Template picker
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templateFlash, setTemplateFlash] = useState<string | null>(null);
 
   // In-game note input
   const [noteText, setNoteText] = useState('');
@@ -103,6 +113,35 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
 
   const removeInGameNote = (index: number) => {
     setInGameNotes(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Apply a lineup template to this match
+  const applyTemplate = async (template: LineupTemplate) => {
+    await db.matches.update(matchId, {
+      lineup: template.positions,
+      bench: template.bench ?? [],
+      formation: template.formation,
+    });
+    setShowTemplatePicker(false);
+    setTemplateFlash(template.name);
+    setTimeout(() => setTemplateFlash(null), 2000);
+  };
+
+  // Save current match lineup as a template
+  const saveLineupAsTemplate = async () => {
+    if (!match || !team?.id || !match.lineup || match.lineup.length === 0) return;
+    const name = `${match.opponent} ${match.date} (${match.formation || 'Custom'})`;
+    await db.lineupTemplates.add({
+      teamId: team.id,
+      name,
+      formation: match.formation || '',
+      positions: match.lineup,
+      bench: match.bench,
+      matchId: match.id,
+      createdAt: new Date().toISOString(),
+    });
+    setTemplateFlash('Saved as template');
+    setTimeout(() => setTemplateFlash(null), 2000);
   };
 
   if (!match) {
@@ -169,7 +208,18 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
             <div className="rounded-lg border border-surface-5 bg-surface-2 p-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-accent">vs {match.opponent}</h2>
+                  <div className="flex items-center gap-2">
+                    {match.isHome != null && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        match.isHome
+                          ? 'bg-accent/15 text-accent border border-accent/20'
+                          : 'bg-surface-3 text-txt-muted border border-surface-5'
+                      }`}>
+                        {match.isHome ? 'HOME' : 'AWAY'}
+                      </span>
+                    )}
+                    <h2 className="text-lg font-semibold text-accent">vs {match.opponent}</h2>
+                  </div>
                   <p className="text-xs text-txt-faint mt-1">
                     {formattedDate} &middot; {to12Hour(match.time)}
                     {match.location && <span className="text-txt-faint"> &middot; {match.location}</span>}
@@ -196,6 +246,52 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
                   {lineupStatus ? 'Edit Lineup' : 'Set Lineup'}
                 </Button>
               </div>
+
+              {/* Template actions */}
+              <div className="flex items-center gap-2 mt-2 border-t border-surface-5 pt-2">
+                <button
+                  onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+                  className="text-[10px] text-txt-faint hover:text-accent transition-colors"
+                >
+                  Use lineup template
+                </button>
+                {lineupStatus && (
+                  <>
+                    <span className="text-txt-faint text-[10px]">&middot;</span>
+                    <button
+                      onClick={saveLineupAsTemplate}
+                      className="text-[10px] text-txt-faint hover:text-accent transition-colors"
+                    >
+                      Save lineup as template
+                    </button>
+                  </>
+                )}
+                {templateFlash && (
+                  <span className="text-[10px] text-emerald-400 font-medium ml-auto">{templateFlash}</span>
+                )}
+              </div>
+
+              {/* Template picker dropdown */}
+              {showTemplatePicker && (
+                <div className="mt-2 bg-surface-1 rounded-lg border border-surface-5 max-h-48 overflow-y-auto">
+                  {templates.length === 0 ? (
+                    <p className="text-xs text-txt-faint text-center py-4">No lineup templates saved yet.</p>
+                  ) : (
+                    templates.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => applyTemplate(t)}
+                        className="w-full text-left px-3 py-2 hover:bg-surface-3 transition-colors border-b border-surface-5 last:border-b-0"
+                      >
+                        <div className="text-xs font-medium text-txt">{t.name}</div>
+                        <div className="text-[10px] text-txt-faint">
+                          {t.formation} &middot; {t.positions.length} players
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Tactical Intent Tags */}
