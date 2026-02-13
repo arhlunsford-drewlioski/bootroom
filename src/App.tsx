@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from './db/database';
 import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
 import LineupCreator from './components/LineupCreator';
@@ -13,7 +15,8 @@ function App() {
   const [dayViewOrigin, setDayViewOrigin] = useState<'week' | 'calendar'>('week');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const teamId = 1;
+  const team = useLiveQuery(() => db.teams.toCollection().first(), []);
+  const teamId = team?.id ?? 0;
 
   const navigateToDay = (dateStr: string, from?: 'week' | 'calendar') => {
     setSelectedDate(dateStr);
