@@ -95,10 +95,10 @@ function App() {
             </h1>
             <div className="space-y-1 flex-1">
               {navItem('dashboard', 'Dashboard')}
-              {navItem('team', 'Team')}
+              {navItem('calendar', 'Calendar', isDayFromCalendar)}
               {navItem('matches', 'Matches')}
               {navItem('lineups', 'Lineups')}
-              {navItem('calendar', 'Calendar', isDayFromCalendar)}
+              {navItem('team', 'Team')}
               {navItem('season', 'Season')}
               <div className="border-t border-surface-5 mt-2 pt-2">
                 {navItem('settings', 'Settings')}
@@ -112,10 +112,10 @@ function App() {
           <h1 onClick={() => setCurrentView('dashboard')} className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer">BOOTROOM</h1>
           <nav className="space-y-1">
             {navItem('dashboard', 'Dashboard')}
-            {navItem('team', 'Team')}
+            {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('matches', 'Matches')}
             {navItem('lineups', 'Lineups')}
-            {navItem('calendar', 'Calendar', isDayFromCalendar)}
+            {navItem('team', 'Team')}
             {navItem('season', 'Season')}
             <div className="border-t border-surface-5 mt-2 pt-2">
               {navItem('settings', 'Settings')}
