@@ -3,9 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Match, Practice } from '../db/database';
 import PracticeDetail from './PracticeDetail';
+import EventFormModal from './ui/EventFormModal';
 import Button from './ui/Button';
 import { getSuggestedPhases } from '../utils/training-hints';
-import { computeEndTime, getWeekDates, getWeekLabel, toDateStr, isToday } from '../utils/time';
+import { computeEndTime, getWeekDates, getWeekLabel, toDateStr, isToday, to12Hour } from '../utils/time';
 
 interface WeekViewProps {
   teamId: number;
@@ -16,6 +17,7 @@ interface WeekViewProps {
 export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }: WeekViewProps) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
+  const [addDate, setAddDate] = useState<string | null>(null);
 
   const referenceDate = new Date();
   referenceDate.setDate(referenceDate.getDate() + weekOffset * 7);
@@ -133,6 +135,13 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
                   {allEvents.length === 0 && (
                     <div className="text-[11px] text-txt-faint/50 text-center pt-4">No events</div>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setAddDate(dateStr); }}
+                    className="mx-auto mt-1 w-6 h-6 rounded-full bg-surface-4 hover:bg-accent text-txt-faint hover:text-surface-0 flex items-center justify-center text-xs transition-colors"
+                    title="Add event"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             );
@@ -145,6 +154,16 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
         <PracticeDetail
           practiceId={selectedPracticeId}
           onClose={() => setSelectedPracticeId(null)}
+        />
+      )}
+
+      {/* Add event modal */}
+      {addDate !== null && (
+        <EventFormModal
+          open={true}
+          dateStr={addDate}
+          teamId={teamId}
+          onClose={() => setAddDate(null)}
         />
       )}
     </div>
@@ -161,7 +180,7 @@ function PracticeCard({ practice, onClick }: { practice: Practice; onClick: () =
       className="bg-surface-3 rounded p-1.5 cursor-pointer hover:bg-surface-4 transition-colors text-xs"
     >
       <div className="text-txt-faint text-[10px]">
-        {practice.time} – {endTime}
+        {to12Hour(practice.time)} – {to12Hour(endTime)}
       </div>
       <div className="font-medium text-txt mt-0.5">{practice.focus}</div>
       {activities.length > 0 && (
@@ -203,7 +222,7 @@ function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
       onClick={onClick}
       className="bg-accent/5 border border-accent/15 rounded p-1.5 cursor-pointer hover:bg-accent/10 transition-colors text-xs"
     >
-      <div className="text-txt-faint text-[10px]">{match.time}</div>
+      <div className="text-txt-faint text-[10px]">{to12Hour(match.time)}</div>
       <div className="font-medium text-accent mt-0.5">vs {match.opponent}</div>
       {match.location && (
         <div className="text-txt-faint mt-0.5 truncate text-[10px]">{match.location}</div>

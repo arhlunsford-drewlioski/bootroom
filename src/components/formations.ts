@@ -217,7 +217,23 @@ export const FORMATIONS: FormationTemplate[] = [
     ],
   },
 
-  // ── 12. 3-4-3 ──
+  // ── 12. 4-3-3 AM ──
+  // DEF=4, MID=2, AMID=1, FWD=3  →  detected "4-2-1-3"
+  {
+    id: '4-3-3-am',
+    name: '4-3-3 AM',
+    slots: [
+      GK, ...BACK4,
+      { id: 'LCM', label: 'CM',  tier: 'MID',  x: 30, y: 42 },
+      { id: 'RCM', label: 'CM',  tier: 'MID',  x: 70, y: 42 },
+      { id: 'CAM', label: 'CAM', tier: 'AMID', x: 50, y: 58 },
+      { id: 'LW',  label: 'LW',  tier: 'FWD',  x: 20, y: 75 },
+      { id: 'ST',  label: 'ST',  tier: 'FWD',  x: 50, y: 80 },
+      { id: 'RW',  label: 'RW',  tier: 'FWD',  x: 80, y: 75 },
+    ],
+  },
+
+  // ── 14. 3-4-3 ──
   // DEF=3, MID=4, FWD=3  →  detected "3-4-3"
   {
     id: '3-4-3',

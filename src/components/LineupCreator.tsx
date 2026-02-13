@@ -9,11 +9,14 @@ import type { PositionSlot } from './formations';
 import { OPPONENT_TRAITS } from '../constants/tags';
 import { compareLineups } from '../utils/lineup-diff';
 import { exportLineupPng } from '../utils/export-image';
+import { to12Hour } from '../utils/time';
 import RolePicker from './ui/RolePicker';
 import TagPicker from './ui/TagPicker';
 import Input from './ui/Input';
 import Select from './ui/Select';
 import Button from './ui/Button';
+import TimePicker from './ui/TimePicker';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 type DragOrigin = 'roster' | 'bench' | 'field';
 
@@ -83,6 +86,9 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
   // Save feedback
   const [saveFlash, setSaveFlash] = useState(false);
+
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Refs for hit testing
   const fieldRef = useRef<SVGSVGElement | null>(null);
@@ -212,10 +218,15 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     setFormationId(newId);
   }
 
-  async function deleteMatch() {
+  function deleteMatch() {
     if (!selectedMatchId) return;
-    if (!confirm('Delete this match? This cannot be undone.')) return;
+    setShowDeleteConfirm(true);
+  }
+
+  async function confirmDeleteMatch() {
+    if (!selectedMatchId) return;
     await db.matches.delete(selectedMatchId);
+    setShowDeleteConfirm(false);
     loadMatch(null);
   }
 
@@ -569,7 +580,7 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <Input type="text" placeholder="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} />
             <Input type="date" value={matchDate} onChange={e => setMatchDate(e.target.value)} />
-            <Input type="time" value={matchTime} onChange={e => setMatchTime(e.target.value)} />
+            <TimePicker value={matchTime || '16:00'} onChange={setMatchTime} />
             <Input type="text" placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
 
@@ -606,8 +617,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
 
       {/* ═══ MAIN AREA: PITCH + DRAWER ═══ */}
       <div className="flex gap-3 relative">
-        {/* PITCH (fills remaining space) */}
-        <div className="flex-1 min-w-0">
+        {/* PITCH (fills remaining space, capped on wide screens) */}
+        <div className="flex-1 min-w-0 max-w-2xl">
           <div className="bg-surface-1 rounded-lg border border-surface-5 p-2 sm:p-3">
             <SoccerField
               formation={formation} assignments={assignments} players={players}
@@ -719,7 +730,7 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
                 </div>
                 <div>
                   <span className="text-txt-faint">Time:</span>
-                  <span className="text-txt ml-1">{matchTime || '—'}</span>
+                  <span className="text-txt ml-1">{matchTime ? to12Hour(matchTime) : '—'}</span>
                 </div>
                 <div>
                   <span className="text-txt-faint">Location:</span>
@@ -811,6 +822,16 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Match"
+        message="Delete this match? This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteMatch}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

@@ -3,9 +3,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Practice, SessionNote } from '../db/database';
 import { UNIT_TAGS, PHASE_TAGS } from '../constants/tags';
+import { to12Hour } from '../utils/time';
 import TagPicker from './ui/TagPicker';
 import Textarea from './ui/Textarea';
 import Button from './ui/Button';
+import ConfirmDialog from './ui/ConfirmDialog';
 import SessionNotes from './SessionNotes';
 import SidelineView from './SidelineView';
 
@@ -37,6 +39,9 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
   // Feature 6: Sideline view
   const [showSideline, setShowSideline] = useState(false);
 
+  // Delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync local state when practice loads from DB
@@ -67,8 +72,9 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
     reader.readAsDataURL(file);
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this practice session? This cannot be undone.')) return;
+  const handleDelete = () => setShowDeleteConfirm(true);
+
+  const confirmDelete = async () => {
     await db.practices.delete(practiceId);
     onClose();
   };
@@ -158,7 +164,7 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
           <div>
             <h2 className="text-base font-semibold text-txt">{practice.focus}</h2>
             <p className="text-xs text-txt-faint mt-1">
-              {formattedDate} &middot; {practice.time}
+              {formattedDate} &middot; {to12Hour(practice.time)}
             </p>
           </div>
 
@@ -243,11 +249,19 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
         {/* Footer */}
         <div className="px-4 py-3 border-t border-surface-5 shrink-0 flex items-center gap-3">
           <Button
+            variant="secondary"
             onClick={handleSave}
             disabled={saving}
             className="flex-1"
           >
             {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            onClick={async () => { await handleSave(); onClose(); }}
+            disabled={saving}
+            className="flex-1"
+          >
+            {saving ? 'Saving...' : 'Save & Close'}
           </Button>
           <button
             onClick={handleDelete}
@@ -257,6 +271,16 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Practice"
+        message="Delete this practice session? This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

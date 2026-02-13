@@ -46,3 +46,19 @@ export function shiftDate(dateStr: string, days: number): string {
   d.setDate(d.getDate() + days);
   return toDateStr(d);
 }
+
+/** Convert "HH:mm" 24-hour string to "h:mm AM/PM" display string */
+export function to12Hour(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+/** Convert 12-hour parts to "HH:mm" 24-hour string for storage */
+export function to24Hour(hour: number, minute: number, period: 'AM' | 'PM'): string {
+  let h = hour;
+  if (period === 'AM' && h === 12) h = 0;
+  if (period === 'PM' && h !== 12) h += 12;
+  return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}

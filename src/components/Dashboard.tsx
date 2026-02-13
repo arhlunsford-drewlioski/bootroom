@@ -5,7 +5,7 @@ import type { Match, Practice } from '../db/database';
 import PracticeDetail from './PracticeDetail';
 import Card from './ui/Card';
 import Button from './ui/Button';
-import { toDateStr, computeEndTime } from '../utils/time';
+import { toDateStr, computeEndTime, to12Hour } from '../utils/time';
 
 interface DashboardProps {
   teamId: number;
@@ -198,7 +198,7 @@ function MatchRow({
         </div>
         <div className="text-xs text-txt-faint mt-0.5">
           {dayLabel && <span>{dayLabel} &middot; </span>}
-          {match.time}
+          {to12Hour(match.time)}
           {match.location && <span> &middot; {match.location}</span>}
         </div>
       </div>
@@ -237,7 +237,7 @@ function PracticeRow({
         </div>
         <div className="text-xs text-txt-faint mt-0.5">
           {dayLabel && <span>{dayLabel} &middot; </span>}
-          {practice.time} – {endTime}
+          {to12Hour(practice.time)} – {to12Hour(endTime)}
         </div>
       </div>
     </div>

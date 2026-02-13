@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
+import { to12Hour } from '../utils/time';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Textarea from './ui/Textarea';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 interface MatchDetailProps {
   matchId: number;
@@ -32,6 +34,7 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
   const [notes, setNotes] = useState('');
   const [reflection, setReflection] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (match) {
@@ -64,8 +67,9 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Delete this match? This cannot be undone.')) return;
+  const handleDelete = () => setShowDeleteConfirm(true);
+
+  const confirmDelete = async () => {
     await db.matches.delete(matchId);
     onClose();
   };
@@ -119,7 +123,7 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
           <div>
             <h2 className="text-lg font-semibold text-accent">vs {match.opponent}</h2>
             <p className="text-xs text-txt-faint mt-1">
-              {formattedDate} &middot; {match.time}
+              {formattedDate} &middot; {to12Hour(match.time)}
               {match.location && <span> &middot; {match.location}</span>}
             </p>
             {match.formation && (
@@ -210,6 +214,16 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Match"
+        message="Delete this match? This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

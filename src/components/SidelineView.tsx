@@ -1,5 +1,5 @@
 import type { Practice, SessionNote } from '../db/database';
-import { computeEndTime } from '../utils/time';
+import { computeEndTime, to12Hour } from '../utils/time';
 import SessionNotes from './SessionNotes';
 
 interface SidelineViewProps {
@@ -26,7 +26,7 @@ export default function SidelineView({ practice, sessionNotes, onSessionNotesCha
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-txt">{practice.focus}</h1>
           <p className="text-base sm:text-lg text-txt-muted mt-0.5">
-            {practice.time} – {endTime}
+            {to12Hour(practice.time)} – {to12Hour(endTime)}
           </p>
         </div>
         <button

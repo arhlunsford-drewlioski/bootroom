@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { posthog } from '../analytics';
 import { isToday } from '../utils/time';
 import PracticeDetail from './PracticeDetail';
+import EventFormModal from './ui/EventFormModal';
 import Button from './ui/Button';
 
 interface CalendarProps {
@@ -81,6 +81,8 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
   const [popover, setPopover] = useState<{ dateStr: string; rect: DOMRect } | null>(null);
+  const [addEventDate, setAddEventDate] = useState<string | null>(null);
+  const [addEventType, setAddEventType] = useState<'match' | 'practice'>('practice');
 
   const matches = useLiveQuery(
     () => teamId ? db.matches.where('teamId').equals(teamId).toArray() : [],
@@ -99,25 +101,6 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
     new Date().getFullYear() === year && new Date().getMonth() === month;
 
   const goToToday = () => setCurrentDate(new Date());
-
-  // Quick-add handlers
-  const quickAddMatch = (dateStr: string) => {
-    const opponent = prompt('Opponent name:');
-    const time = prompt('Time (e.g., 14:00):');
-    if (opponent && time) {
-      db.matches.add({ teamId, opponent, date: dateStr, time, location: '' })
-        .then(() => posthog.capture('match_created'));
-    }
-  };
-
-  const quickAddPractice = (dateStr: string) => {
-    const focus = prompt('Session focus (e.g., "Possession"):');
-    const time = prompt('Time (e.g., 16:00):');
-    if (focus && time) {
-      db.practices.add({ teamId, focus, date: dateStr, time, status: 'planned' })
-        .then(() => posthog.capture('practice_created'));
-    }
-  };
 
   // Build calendar grid
   const firstDay = new Date(year, month, 1).getDay();
@@ -257,8 +240,8 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
           anchorRect={popover.rect}
           onClose={() => setPopover(null)}
           onViewDay={() => onNavigateToDay?.(popover.dateStr)}
-          onAddMatch={() => quickAddMatch(popover.dateStr)}
-          onAddPractice={() => quickAddPractice(popover.dateStr)}
+          onAddMatch={() => { setAddEventType('match'); setAddEventDate(popover.dateStr); }}
+          onAddPractice={() => { setAddEventType('practice'); setAddEventDate(popover.dateStr); }}
         />
       )}
 
@@ -267,6 +250,17 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
         <PracticeDetail
           practiceId={selectedPracticeId}
           onClose={() => setSelectedPracticeId(null)}
+        />
+      )}
+
+      {/* Add event modal */}
+      {addEventDate !== null && (
+        <EventFormModal
+          open={true}
+          dateStr={addEventDate}
+          teamId={teamId}
+          initialType={addEventType}
+          onClose={() => setAddEventDate(null)}
         />
       )}
     </div>

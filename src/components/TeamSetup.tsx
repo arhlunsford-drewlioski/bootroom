@@ -6,6 +6,7 @@ import Select from './ui/Select';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import RolePicker from './ui/RolePicker';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 export default function TeamSetup() {
   const [team, setTeam] = useState<Team | null>(null);
@@ -15,6 +16,8 @@ export default function TeamSetup() {
   const [playerName, setPlayerName] = useState('');
   const [jerseyNumber, setJerseyNumber] = useState('');
   const [newPlayerRole, setNewPlayerRole] = useState<string | undefined>();
+  const [deletePlayerId, setDeletePlayerId] = useState<number | null>(null);
+  const [showDeleteTeamConfirm, setShowDeleteTeamConfirm] = useState(false);
 
   useEffect(() => {
     loadTeam();
@@ -59,20 +62,30 @@ export default function TeamSetup() {
     loadTeam();
   }
 
-  async function deletePlayer(playerId: number) {
-    if (!confirm('Remove this player from the roster?')) return;
-    await db.players.delete(playerId);
+  function deletePlayer(playerId: number) {
+    setDeletePlayerId(playerId);
+  }
+
+  async function confirmDeletePlayer() {
+    if (deletePlayerId == null) return;
+    await db.players.delete(deletePlayerId);
+    setDeletePlayerId(null);
     loadTeam();
   }
 
-  async function deleteTeam() {
+  function deleteTeam() {
     if (!team?.id) return;
-    if (!confirm('Delete this team and all its data (players, matches, practices)? This cannot be undone.')) return;
+    setShowDeleteTeamConfirm(true);
+  }
+
+  async function confirmDeleteTeam() {
+    if (!team?.id) return;
     await db.players.where('teamId').equals(team.id).delete();
     await db.matches.where('teamId').equals(team.id).delete();
     await db.practices.where('teamId').equals(team.id).delete();
     await db.seasonBlocks.where('teamId').equals(team.id).delete();
     await db.teams.delete(team.id);
+    setShowDeleteTeamConfirm(false);
     setTeam(null);
     setPlayers([]);
   }
@@ -182,6 +195,26 @@ export default function TeamSetup() {
           Delete Team
         </button>
       </div>
+
+      <ConfirmDialog
+        open={deletePlayerId !== null}
+        title="Remove Player"
+        message="Remove this player from the roster?"
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={confirmDeletePlayer}
+        onCancel={() => setDeletePlayerId(null)}
+      />
+
+      <ConfirmDialog
+        open={showDeleteTeamConfirm}
+        title="Delete Team"
+        message="Delete this team and all its data (players, matches, practices)? This cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={confirmDeleteTeam}
+        onCancel={() => setShowDeleteTeamConfirm(false)}
+      />
     </div>
   );
 }

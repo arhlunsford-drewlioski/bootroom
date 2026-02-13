@@ -3,9 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Match, Practice } from '../db/database';
 import PracticeDetail from './PracticeDetail';
+import EventFormModal from './ui/EventFormModal';
 import Button from './ui/Button';
 import Card from './ui/Card';
-import { computeEndTime, shiftDate } from '../utils/time';
+import { computeEndTime, shiftDate, to12Hour } from '../utils/time';
 
 interface DayViewProps {
   teamId: number;
@@ -18,6 +19,7 @@ interface DayViewProps {
 
 export default function DayView({ teamId, dateStr, onBack, backLabel, onNavigateToMatch, onDateChange }: DayViewProps) {
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
 
   const formattedDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'long',
@@ -50,6 +52,9 @@ export default function DayView({ teamId, dateStr, onBack, backLabel, onNavigate
           &larr; {backLabel ?? 'Back to Week'}
         </button>
         <div className="flex items-center gap-1">
+          <Button variant="secondary" onClick={() => setShowAddEvent(true)} className="text-xs">
+            + Add
+          </Button>
           <Button variant="secondary" onClick={() => onDateChange(shiftDate(dateStr, -1))}>
             &larr;
           </Button>
@@ -104,6 +109,16 @@ export default function DayView({ teamId, dateStr, onBack, backLabel, onNavigate
           onClose={() => setSelectedPracticeId(null)}
         />
       )}
+
+      {/* Add event modal */}
+      {showAddEvent && (
+        <EventFormModal
+          open={true}
+          dateStr={dateStr}
+          teamId={teamId}
+          onClose={() => setShowAddEvent(false)}
+        />
+      )}
     </div>
   );
 }
@@ -122,7 +137,7 @@ function DayPracticeCard({ practice, onEdit }: { practice: Practice; onEdit: () 
     <Card>
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-xs text-txt-faint">{practice.time} – {endTime}</div>
+          <div className="text-xs text-txt-faint">{to12Hour(practice.time)} – {to12Hour(endTime)}</div>
           <div className="text-sm font-semibold text-txt mt-1">{practice.focus}</div>
         </div>
         <span
@@ -185,7 +200,7 @@ function DayMatchCard({ match, onViewMatch }: { match: Match; onViewMatch: () =>
     <div className="rounded-lg border border-accent/20 bg-surface-1 p-4 cursor-pointer hover:bg-surface-2 transition-colors" onClick={onViewMatch}>
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-xs text-txt-faint">{match.time}</div>
+          <div className="text-xs text-txt-faint">{to12Hour(match.time)}</div>
           <div className="text-sm font-semibold text-accent mt-1">vs {match.opponent}</div>
         </div>
         {match.result && (
