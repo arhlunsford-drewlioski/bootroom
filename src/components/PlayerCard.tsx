@@ -73,24 +73,26 @@ function RatingDots({
   onChange: (v: number | undefined) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(value === n ? undefined : n)}
-          className={`w-7 h-7 rounded-full text-[10px] font-bold transition-all ${
-            value != null && n <= value
-              ? 'bg-accent text-surface-0'
-              : 'bg-surface-3 text-txt-faint hover:bg-surface-4 hover:text-txt-muted'
-          }`}
-          title={SCALE_LABELS[n]}
-        >
-          {n}
-        </button>
-      ))}
+    <div>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(value === n ? undefined : n)}
+            className={`w-7 h-7 rounded-full text-[10px] font-bold transition-all ${
+              value != null && n <= value
+                ? 'bg-accent text-surface-0'
+                : 'bg-surface-3 text-txt-faint hover:bg-surface-4 hover:text-txt-muted'
+            }`}
+            title={SCALE_LABELS[n]}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
       {value != null && (
-        <span className="text-[10px] text-txt-faint ml-1.5">{SCALE_LABELS[value]}</span>
+        <span className="block text-[10px] text-txt-faint mt-1">{SCALE_LABELS[value]}</span>
       )}
     </div>
   );
