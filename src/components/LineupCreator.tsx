@@ -8,6 +8,7 @@ import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT
 import type { PositionSlot } from './formations';
 import { OPPONENT_TRAITS } from '../constants/tags';
 import { compareLineups } from '../utils/lineup-diff';
+import { exportLineupPng } from '../utils/export-image';
 import RolePicker from './ui/RolePicker';
 import TagPicker from './ui/TagPicker';
 import Input from './ui/Input';
@@ -530,6 +531,29 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
             </svg>
             Squad
           </button>
+
+          {/* Export */}
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              if (!fieldRef.current) return;
+              await exportLineupPng({
+                fieldSvg: fieldRef.current,
+                opponent,
+                matchDate,
+                formation: detectedFormation,
+              });
+            }}
+            disabled={Object.keys(assignments).length === 0}
+            className="px-3"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1.5 -mt-px">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Export
+          </Button>
 
           {/* Save */}
           <Button

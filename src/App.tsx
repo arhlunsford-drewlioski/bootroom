@@ -9,6 +9,7 @@ import Calendar from './components/calendar';
 import DayView from './components/DayView';
 import SeasonOverview from './components/SeasonOverview';
 import MatchDetail from './components/MatchDetail';
+import Settings from './components/Settings';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -78,6 +79,9 @@ function App() {
             {navItem('week', 'Week', isDayFromWeek)}
             {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
+            <div className="border-t border-surface-5 mt-2 pt-2">
+              {navItem('settings', 'Settings')}
+            </div>
           </nav>
         )}
 
@@ -91,6 +95,9 @@ function App() {
             {navItem('week', 'Week', isDayFromWeek)}
             {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
+            <div className="border-t border-surface-5 mt-2 pt-2">
+              {navItem('settings', 'Settings')}
+            </div>
           </nav>
         </aside>
 
@@ -141,6 +148,7 @@ function App() {
           {currentView === 'season' && (
             <SeasonOverview teamId={teamId} />
           )}
+          {currentView === 'settings' && <Settings />}
         </main>
       </div>
 
