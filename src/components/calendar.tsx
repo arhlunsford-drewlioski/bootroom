@@ -90,7 +90,7 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
   return (
     <div
       onClick={onClick}
-      className="bg-surface-3 rounded p-1.5 cursor-pointer hover:bg-surface-4 transition-colors text-xs"
+      className="bg-emerald-500/5 border border-emerald-500/15 rounded p-1.5 cursor-pointer hover:bg-emerald-500/10 transition-colors text-xs"
     >
       <div className="text-txt-faint text-[10px]">
         {to12Hour(practice.time)} – {to12Hour(endTime)}
@@ -139,6 +139,9 @@ function WeekMatchCard({ match, onClick }: { match: Match; onClick: () => void }
       {match.location && (
         <div className="text-txt-faint mt-0.5 truncate text-[10px]">{match.location}</div>
       )}
+      {match.formation && (
+        <div className="text-txt-faint mt-0.5 text-[10px]">{match.formation}</div>
+      )}
       {match.opponentTraits && match.opponentTraits.length > 0 && (
         <div className="flex flex-wrap gap-0.5 mt-1">
           {match.opponentTraits.slice(0, 2).map(trait => (
@@ -151,9 +154,17 @@ function WeekMatchCard({ match, onClick }: { match: Match; onClick: () => void }
           )}
         </div>
       )}
-      {match.result && (
-        <div className="text-emerald-400 font-medium mt-0.5 text-[10px]">{match.result}</div>
-      )}
+      <span
+        className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
+          match.result
+            ? 'bg-emerald-500/15 text-emerald-400'
+            : match.completed
+              ? 'bg-emerald-500/15 text-emerald-400'
+              : 'bg-surface-4 text-txt-faint'
+        }`}
+      >
+        {match.result || (match.completed ? 'completed' : 'upcoming')}
+      </span>
     </div>
   );
 }
