@@ -1,0 +1,579 @@
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/database';
+import type { Player, LineupEntry } from '../db/database';
+import SoccerField from './SoccerField';
+import { FORMATIONS, DEFAULT_FORMATION_ID, getFormation, detectFormation } from './formations';
+import type { PositionSlot } from './formations';
+import { OPPONENT_TRAITS } from '../constants/tags';
+import { compareLineups } from '../utils/lineup-diff';
+import RolePicker from './ui/RolePicker';
+import TagPicker from './ui/TagPicker';
+import Input from './ui/Input';
+import Select from './ui/Select';
+import Button from './ui/Button';
+import Card from './ui/Card';
+
+type DragOrigin = 'roster' | 'bench' | 'field';
+
+export default function LineupCreator() {
+  const team = useLiveQuery(() => db.teams.toCollection().first(), []);
+  const players = useLiveQuery(
+    () => (team?.id ? db.players.where('teamId').equals(team.id).toArray() : []),
+    [team?.id],
+  ) ?? [];
+  const matches = useLiveQuery(
+    () => (team?.id ? db.matches.where('teamId').equals(team.id).toArray() : []),
+    [team?.id],
+  ) ?? [];
+
+  // Match metadata
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const [opponent, setOpponent] = useState('');
+  const [matchDate, setMatchDate] = useState('');
+  const [matchTime, setMatchTime] = useState('');
+  const [location, setLocation] = useState('');
+
+  // Formation & lineup
+  const [formationId, setFormationId] = useState(DEFAULT_FORMATION_ID);
+  const [assignments, setAssignments] = useState<Record<string, number>>({});
+  const [bench, setBench] = useState<number[]>([]);
+
+  // Feature 1: Role overrides per match
+  const [roleOverrides, setRoleOverrides] = useState<Record<string, string>>({});
+  const [editingRoleSlotId, setEditingRoleSlotId] = useState<string | null>(null);
+
+  // Feature 2: Opponent traits
+  const [opponentTraits, setOpponentTraits] = useState<string[]>([]);
+  const [showOpponentProfile, setShowOpponentProfile] = useState(false);
+
+  // Drag state
+  const [dragPlayerId, setDragPlayerId] = useState<number | null>(null);
+  const [dragOrigin, setDragOrigin] = useState<DragOrigin | null>(null);
+  const [dragOriginSlotId, setDragOriginSlotId] = useState<string | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+
+  // Click-to-assign
+  const [pendingAssignPlayerId, setPendingAssignPlayerId] = useState<number | null>(null);
+
+  // Highlight
+  const [highlightSlotId, setHighlightSlotId] = useState<string | null>(null);
+
+  // Mobile tab
+  const [mobileTab, setMobileTab] = useState<'roster' | 'bench'>('roster');
+
+  // Refs for hit testing
+  const fieldRef = useRef<SVGSVGElement | null>(null);
+  const benchRef = useRef<HTMLDivElement | null>(null);
+  const rosterRef = useRef<HTMLDivElement | null>(null);
+
+  // Filter
+  const [rosterFilter, setRosterFilter] = useState('');
+
+  const formation = getFormation(formationId)!;
+
+  // Derived
+  const assignedPlayerIds = new Set([...Object.values(assignments), ...bench]);
+  const availablePlayers = players.filter(p => !assignedPlayerIds.has(p.id!));
+  const filteredRoster = availablePlayers.filter(p =>
+    p.name.toLowerCase().includes(rosterFilter.toLowerCase()) ||
+    String(p.jerseyNumber).includes(rosterFilter),
+  );
+
+  const filledSlots = formation.slots.filter(s => assignments[s.id] != null);
+  const detectedFormation = filledSlots.length >= 10 ? detectFormation(filledSlots) : null;
+
+  // Feature 1: Build roleTags Record (merge player defaults + per-match overrides)
+  const roleTags = useMemo(() => {
+    const tags: Record<string, string> = {};
+    for (const [slotId, playerId] of Object.entries(assignments)) {
+      if (roleOverrides[slotId]) {
+        tags[slotId] = roleOverrides[slotId];
+      } else {
+        const player = players.find(p => p.id === playerId);
+        if (player?.roleTag) {
+          tags[slotId] = player.roleTag;
+        }
+      }
+    }
+    return tags;
+  }, [assignments, roleOverrides, players]);
+
+  // Feature 4: Lineup diff
+  const lineupDiff = useMemo(() => {
+    if (!selectedMatchId || Object.keys(assignments).length < 8) return null;
+    const currentMatch = matches.find(m => m.id === selectedMatchId);
+    if (!currentMatch) return null;
+    const previousMatches = matches
+      .filter(m => m.id !== selectedMatchId && m.lineup && m.lineup.length > 0)
+      .filter(m => String(m.date) < String(currentMatch.date))
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    if (previousMatches.length === 0) return null;
+    const prevMatch = previousMatches[0];
+    const prevFormation = prevMatch.formation ? getFormation(prevMatch.formation) : null;
+    const prevSlots: PositionSlot[] = prevFormation?.slots ?? formation.slots;
+    const currentLineup: LineupEntry[] = Object.entries(assignments).map(
+      ([slotId, playerId]) => ({ slotId, playerId }),
+    );
+    return compareLineups(currentLineup, prevMatch.lineup!, formation.slots, prevSlots);
+  }, [selectedMatchId, assignments, matches, formation.slots]);
+
+  function loadMatch(matchId: number | null) {
+    setSelectedMatchId(matchId);
+    if (matchId == null) {
+      setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
+      setAssignments({}); setBench([]); setFormationId(DEFAULT_FORMATION_ID);
+      setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
+      return;
+    }
+    const match = matches.find(m => m.id === matchId);
+    if (!match) return;
+    setOpponent(match.opponent);
+    const rawDate = match.date as unknown;
+    setMatchDate(rawDate instanceof Date ? rawDate.toISOString().slice(0, 10) : String(match.date));
+    setMatchTime(match.time ?? '');
+    setLocation(match.location ?? '');
+    setBench(match.bench ?? []);
+    if (match.formation && getFormation(match.formation)) {
+      setFormationId(match.formation);
+    } else {
+      setFormationId(DEFAULT_FORMATION_ID);
+    }
+    const newAssignments: Record<string, number> = {};
+    const newRoleOverrides: Record<string, string> = {};
+    for (const entry of match.lineup ?? []) {
+      newAssignments[entry.slotId] = entry.playerId;
+      if (entry.roleTag) newRoleOverrides[entry.slotId] = entry.roleTag;
+    }
+    setAssignments(newAssignments);
+    setRoleOverrides(newRoleOverrides);
+    setOpponentTraits(match.opponentTraits ?? []);
+    setEditingRoleSlotId(null);
+  }
+
+  function changeFormation(newId: string) {
+    const newFormation = getFormation(newId);
+    if (!newFormation) return;
+    const validSlotIds = new Set(newFormation.slots.map(s => s.id));
+    setAssignments(prev => {
+      const next: Record<string, number> = {};
+      for (const [slotId, playerId] of Object.entries(prev)) {
+        if (validSlotIds.has(slotId)) next[slotId] = playerId;
+      }
+      return next;
+    });
+    setRoleOverrides(prev => {
+      const next: Record<string, string> = {};
+      for (const [slotId, role] of Object.entries(prev)) {
+        if (validSlotIds.has(slotId)) next[slotId] = role;
+      }
+      return next;
+    });
+    setFormationId(newId);
+  }
+
+  async function saveLineup() {
+    if (!team?.id) return;
+    const lineupEntries: LineupEntry[] = Object.entries(assignments).map(
+      ([slotId, playerId]) => ({ slotId, playerId, roleTag: roleOverrides[slotId] || undefined }),
+    );
+    const detected = detectFormation(formation.slots.filter(s => assignments[s.id] != null));
+    if (selectedMatchId) {
+      await db.matches.update(selectedMatchId, {
+        opponent, date: matchDate, time: matchTime, location: location || undefined,
+        lineup: lineupEntries, bench, formation: detected || formationId,
+        opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
+      });
+    } else {
+      if (!opponent || !matchDate || !matchTime) return;
+      const id = await db.matches.add({
+        teamId: team.id, opponent, date: matchDate, time: matchTime,
+        location: location || undefined, lineup: lineupEntries, bench,
+        formation: detected || formationId,
+        opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
+      });
+      setSelectedMatchId(id as number);
+    }
+  }
+
+  // === Drag and drop via pointer events ===
+  const startDrag = useCallback((e: React.PointerEvent, playerId: number, origin: DragOrigin, slotId?: string) => {
+    e.preventDefault();
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    setDragPlayerId(playerId); setDragOrigin(origin);
+    setDragOriginSlotId(slotId ?? null);
+    setDragPos({ x: e.clientX, y: e.clientY }); setIsDragging(false);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (dragPlayerId == null) return;
+    const pos = { x: e.clientX, y: e.clientY };
+    setDragPos(pos);
+    if (!isDragging && dragStartPos.current) {
+      const dx = pos.x - dragStartPos.current.x;
+      const dy = pos.y - dragStartPos.current.y;
+      if (Math.hypot(dx, dy) > 8) setIsDragging(true);
+    }
+    if (isDragging) {
+      const slotId = hitTestSlot(pos.x, pos.y);
+      setHighlightSlotId(slotId);
+    }
+  }, [dragPlayerId, isDragging]);
+
+  const handlePointerUp = useCallback(() => {
+    if (dragPlayerId == null) return;
+    if (isDragging && dragPos) {
+      const target = hitTestDrop(dragPos.x, dragPos.y);
+      if (target === 'slot' && highlightSlotId) dropOnSlot(highlightSlotId);
+      else if (target === 'bench') dropOnBench();
+      else if (target === 'roster') dropOnRoster();
+    }
+    setDragPlayerId(null); setDragOrigin(null); setDragOriginSlotId(null);
+    setDragPos(null); setIsDragging(false); setHighlightSlotId(null);
+    dragStartPos.current = null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragPlayerId, isDragging, dragPos, highlightSlotId]);
+
+  useEffect(() => {
+    if (dragPlayerId == null) return;
+    const onMove = (e: PointerEvent) => {
+      const pos = { x: e.clientX, y: e.clientY };
+      setDragPos(pos);
+      if (!isDragging && dragStartPos.current) {
+        const dx = pos.x - dragStartPos.current.x;
+        const dy = pos.y - dragStartPos.current.y;
+        if (Math.hypot(dx, dy) > 8) setIsDragging(true);
+      }
+      if (isDragging) setHighlightSlotId(hitTestSlot(pos.x, pos.y));
+    };
+    const onUp = () => {
+      setDragPlayerId(null); setDragOrigin(null); setDragOriginSlotId(null);
+      setDragPos(null); setIsDragging(false); setHighlightSlotId(null);
+      dragStartPos.current = null;
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragPlayerId, isDragging]);
+
+  function hitTestSlot(clientX: number, clientY: number): string | null {
+    const svg = fieldRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
+    const pctX = ((clientX - rect.left) / rect.width) * 100;
+    const pctY = (1 - (clientY - rect.top) / rect.height) * 100;
+    let closest: { slotId: string; dist: number } | null = null;
+    for (const slot of formation.slots) {
+      const dist = Math.hypot(slot.x - pctX, slot.y - pctY);
+      if (dist < 10 && (!closest || dist < closest.dist)) closest = { slotId: slot.id, dist };
+    }
+    return closest?.slotId ?? null;
+  }
+
+  function hitTestDrop(clientX: number, clientY: number): 'slot' | 'bench' | 'roster' | null {
+    if (hitTestSlot(clientX, clientY)) return 'slot';
+    const svg = fieldRef.current;
+    if (svg) {
+      const r = svg.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return null;
+    }
+    const benchEl = benchRef.current;
+    if (benchEl) {
+      const r = benchEl.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return 'bench';
+    }
+    const rosterEl = rosterRef.current;
+    if (rosterEl) {
+      const r = rosterEl.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return 'roster';
+    }
+    return null;
+  }
+
+  function dropOnSlot(targetSlotId: string) {
+    if (dragPlayerId == null) return;
+    const pid = dragPlayerId;
+    setAssignments(prev => {
+      const next = { ...prev };
+      const existing = next[targetSlotId];
+      if (dragOrigin === 'field' && dragOriginSlotId) {
+        delete next[dragOriginSlotId];
+        if (existing != null && existing !== pid) next[dragOriginSlotId] = existing;
+      }
+      next[targetSlotId] = pid;
+      return next;
+    });
+    if (dragOrigin === 'bench') setBench(b => b.filter(id => id !== pid));
+  }
+
+  function dropOnBench() {
+    if (dragPlayerId == null) return;
+    const pid = dragPlayerId;
+    if (dragOrigin === 'field' && dragOriginSlotId) {
+      setAssignments(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+    }
+    setBench(prev => prev.includes(pid) ? prev : [...prev, pid]);
+  }
+
+  function dropOnRoster() {
+    if (dragPlayerId == null) return;
+    const pid = dragPlayerId;
+    if (dragOrigin === 'field' && dragOriginSlotId) {
+      setAssignments(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+    }
+    if (dragOrigin === 'bench') setBench(prev => prev.filter(id => id !== pid));
+  }
+
+  function handlePlayerClick(playerId: number) {
+    if (isDragging) return;
+    setPendingAssignPlayerId(prev => prev === playerId ? null : playerId);
+  }
+
+  function handleSlotClick(slotId: string) {
+    if (pendingAssignPlayerId != null) {
+      const pid = pendingAssignPlayerId;
+      setBench(prev => prev.filter(id => id !== pid));
+      setAssignments(prev => {
+        const next = { ...prev };
+        for (const [sid, id] of Object.entries(next)) { if (id === pid) delete next[sid]; }
+        next[slotId] = pid;
+        return next;
+      });
+      setPendingAssignPlayerId(null);
+      return;
+    }
+    const pid = assignments[slotId];
+    if (pid != null) setPendingAssignPlayerId(pid);
+  }
+
+  function handleSlotPointerDown(e: React.PointerEvent, slotId: string) {
+    const pid = assignments[slotId];
+    if (pid == null) return;
+    e.stopPropagation();
+    startDrag(e, pid, 'field', slotId);
+  }
+
+  function handleSlotDoubleClick(slotId: string) {
+    if (assignments[slotId] == null) return;
+    setEditingRoleSlotId(prev => prev === slotId ? null : slotId);
+  }
+
+  function PlayerCard({ player, origin }: { player: Player; origin: DragOrigin }) {
+    const isBeingDragged = isDragging && dragPlayerId === player.id;
+    const isPending = pendingAssignPlayerId === player.id;
+    return (
+      <div
+        onPointerDown={(e) => startDrag(e, player.id!, origin)}
+        onClick={() => handlePlayerClick(player.id!)}
+        className={`flex items-center gap-3 px-3 py-2 rounded select-none transition-colors ${
+          isBeingDragged
+            ? 'opacity-30'
+            : isPending
+              ? 'bg-accent/20 border border-accent/40 ring-1 ring-accent/30'
+              : 'bg-surface-3 hover:bg-surface-4 cursor-grab active:cursor-grabbing'
+        }`}
+        style={{ touchAction: 'none' }}
+      >
+        <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-bold shrink-0">
+          {player.jerseyNumber}
+        </div>
+        <span className="text-sm text-txt truncate">{player.name}</span>
+        {player.roleTag && (
+          <span className="ml-auto text-[10px] text-accent/70 truncate">{player.roleTag}</span>
+        )}
+      </div>
+    );
+  }
+
+  if (!team) {
+    return (
+      <div className="text-txt-muted">
+        <p>Create a team first in the Team tab.</p>
+      </div>
+    );
+  }
+
+  const sortedMatches = [...matches].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+  return (
+    <div
+      className="flex flex-col gap-3 select-none"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={{ touchAction: isDragging ? 'none' : 'auto' }}
+    >
+      {/* Match selector */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select
+          value={selectedMatchId ?? ''}
+          onChange={(e) => loadMatch(e.target.value ? Number(e.target.value) : null)}
+          className="w-full sm:w-auto"
+        >
+          <option value="">+ New Match</option>
+          {sortedMatches.map(m => {
+            const raw = m.date as unknown;
+            const dateStr = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(m.date);
+            return (
+              <option key={m.id} value={m.id}>{dateStr} vs {m.opponent}</option>
+            );
+          })}
+        </Select>
+      </div>
+
+      {/* Match details */}
+      <Card className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Input type="text" placeholder="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} />
+        <Input type="date" value={matchDate} onChange={e => setMatchDate(e.target.value)} />
+        <Input type="time" value={matchTime} onChange={e => setMatchTime(e.target.value)} />
+        <Input type="text" placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
+      </Card>
+
+      {/* Opponent Profile */}
+      <Card className="py-3">
+        <button onClick={() => setShowOpponentProfile(!showOpponentProfile)} className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-txt">Opponent Profile</h3>
+            {opponentTraits.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent">
+                {opponentTraits.length} trait{opponentTraits.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <span className="text-txt-faint text-sm">{showOpponentProfile ? '▾' : '▸'}</span>
+        </button>
+        {showOpponentProfile && (
+          <div className="mt-3">
+            <TagPicker label="Scouting traits (up to 5)" options={OPPONENT_TRAITS} selected={opponentTraits} onChange={setOpponentTraits} max={5} allowCustom />
+          </div>
+        )}
+        {!showOpponentProfile && opponentTraits.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {opponentTraits.map(trait => (
+              <span key={trait} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">{trait}</span>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Formation selector + lineup diff */}
+      <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-3">
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-txt-muted">Formation</label>
+          <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
+            {FORMATIONS.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
+          </Select>
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          {lineupDiff?.message && (
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium ${
+              lineupDiff.newSpine ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20'
+            }`}>{lineupDiff.message}</span>
+          )}
+          {detectedFormation && (<span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>)}
+          <span className="text-xs text-txt-faint">{Object.keys(assignments).length}/11</span>
+        </div>
+      </Card>
+
+      {/* Three-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_180px] gap-3">
+        {/* Roster — desktop */}
+        <div ref={rosterRef} className="hidden lg:flex flex-col bg-surface-1 rounded-lg border border-surface-5 p-3 max-h-[600px]">
+          <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-3" />
+          <div className="overflow-y-auto space-y-1 flex-1">
+            {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
+            {filteredRoster.length === 0 && (
+              <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Field */}
+        <Card className="p-3">
+          <SoccerField
+            formation={formation} assignments={assignments} players={players}
+            detectedFormation={detectedFormation} highlightSlotId={highlightSlotId}
+            onSlotPointerDown={handleSlotPointerDown} onSlotClick={handleSlotClick}
+            onSlotDoubleClick={handleSlotDoubleClick} pendingAssign={pendingAssignPlayerId != null}
+            fieldRef={fieldRef} roleTags={roleTags}
+          />
+          {editingRoleSlotId && assignments[editingRoleSlotId] != null && (() => {
+            const slotPlayer = players.find(p => p.id === assignments[editingRoleSlotId]);
+            const slotInfo = formation.slots.find(s => s.id === editingRoleSlotId);
+            return (
+              <div className="mt-3 p-3 rounded-lg bg-surface-2 border border-surface-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-txt-muted">Role for #{slotPlayer?.jerseyNumber} {slotPlayer?.name} ({slotInfo?.label})</span>
+                  <button onClick={() => setEditingRoleSlotId(null)} className="text-xs text-txt-faint hover:text-txt transition-colors">✕</button>
+                </div>
+                <RolePicker
+                  value={roleOverrides[editingRoleSlotId] ?? slotPlayer?.roleTag}
+                  onChange={(role) => {
+                    setRoleOverrides(prev => {
+                      const next = { ...prev };
+                      if (role) next[editingRoleSlotId] = role;
+                      else delete next[editingRoleSlotId];
+                      return next;
+                    });
+                  }}
+                />
+              </div>
+            );
+          })()}
+        </Card>
+
+        {/* Bench — desktop */}
+        <div ref={benchRef} className="hidden lg:flex flex-col bg-surface-1 rounded-lg border border-surface-5 p-3 max-h-[600px]">
+          <h3 className="text-sm font-semibold text-txt-muted mb-3">Bench ({bench.length})</h3>
+          <div className="overflow-y-auto space-y-1 flex-1">
+            {bench.map(id => { const p = players.find(pl => pl.id === id); return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null; })}
+            {bench.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">Drag players here</p>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile tabs for roster/bench */}
+      <Card className="lg:hidden p-3">
+        <div className="flex border-b border-surface-5 mb-3">
+          <button onClick={() => setMobileTab('roster')} className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === 'roster' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}>
+            Available ({availablePlayers.length})
+          </button>
+          <button onClick={() => setMobileTab('bench')} className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === 'bench' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}>
+            Bench ({bench.length})
+          </button>
+        </div>
+        {mobileTab === 'roster' ? (
+          <div>
+            <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-3" />
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
+              {filteredRoster.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>)}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1 max-h-48 overflow-y-auto">
+            {bench.map(id => { const p = players.find(pl => pl.id === id); return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null; })}
+            {bench.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">Drag players here</p>)}
+          </div>
+        )}
+      </Card>
+
+      {/* Save */}
+      <Button onClick={saveLineup} disabled={!opponent || !matchDate || !matchTime} className="self-start w-full sm:w-auto px-6">
+        {selectedMatchId ? 'Save Lineup' : 'Create Match & Save Lineup'}
+      </Button>
+
+      {/* Drag ghost */}
+      {isDragging && dragPlayerId != null && dragPos && (
+        <div className="fixed pointer-events-none z-50" style={{ left: dragPos.x - 20, top: dragPos.y - 20 }}>
+          <div className="w-10 h-10 rounded-full bg-accent border-2 border-white flex items-center justify-center text-surface-1 font-bold text-sm shadow-lg shadow-accent/30">
+            {players.find(p => p.id === dragPlayerId)?.jerseyNumber ?? '?'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

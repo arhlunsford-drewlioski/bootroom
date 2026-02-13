@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npx vite build)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Bash(node -e:*)",
+      "Bash(npm run build:*)",
+      "Bash(ls:*)",
+      "Bash(del C:UsersarhluDesktopbootroomsrccomponentsMatchPlanner.tsx)",
+      "WebFetch(domain:www.cufonfonts.com)"
+    ]
+  }
+}

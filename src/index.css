@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background-color: #0c1421;
+  color: #e2e8f0;
+  font-family: 'Bebas Neue', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.04em;
+}
+
+/* Force dark backgrounds on select options (browser defaults to white) */
+select option {
+  background-color: #1a2740;
+  color: #e2e8f0;
+}
+
+/* Style date/time input pickers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
