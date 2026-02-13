@@ -44,7 +44,7 @@ function App() {
       <div className="flex flex-col md:flex-row">
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between bg-surface-1 border-b border-surface-5 px-4 py-3">
-          <h1 className="text-2xl font-bold text-accent tracking-wider font-display">BOOTROOM</h1>
+          <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">BOOTROOM</h1>
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
             className="text-txt-muted hover:text-txt p-1"
@@ -67,7 +67,7 @@ function App() {
 
         {/* Desktop sidebar */}
         <aside className="hidden md:block w-52 shrink-0 bg-surface-1 min-h-screen border-r border-surface-5 p-4">
-          <h1 className="text-3xl font-bold text-accent tracking-wider mb-6 font-display">BOOTROOM</h1>
+          <h1 onClick={() => setCurrentView('dashboard')} className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer">BOOTROOM</h1>
           <nav className="space-y-1">
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
