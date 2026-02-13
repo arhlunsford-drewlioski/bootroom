@@ -188,6 +188,13 @@ export default function LineupCreator() {
     setFormationId(newId);
   }
 
+  async function deleteMatch() {
+    if (!selectedMatchId) return;
+    if (!confirm('Delete this match? This cannot be undone.')) return;
+    await db.matches.delete(selectedMatchId);
+    loadMatch(null);
+  }
+
   async function saveLineup() {
     if (!team?.id) return;
     const lineupEntries: LineupEntry[] = Object.entries(assignments).map(
@@ -575,10 +582,20 @@ export default function LineupCreator() {
         )}
       </Card>
 
-      {/* Save */}
-      <Button onClick={saveLineup} disabled={!opponent || !matchDate || !matchTime} className="self-start w-full sm:w-auto px-6">
-        {selectedMatchId ? 'Save Lineup' : 'Create Match & Save Lineup'}
-      </Button>
+      {/* Save / Delete */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button onClick={saveLineup} disabled={!opponent || !matchDate || !matchTime} className="w-full sm:w-auto px-6">
+          {selectedMatchId ? 'Save Lineup' : 'Create Match & Save Lineup'}
+        </Button>
+        {selectedMatchId && (
+          <button
+            onClick={deleteMatch}
+            className="text-xs text-txt-faint hover:text-red-400 transition-colors"
+          >
+            Delete Match
+          </button>
+        )}
+      </div>
 
       {/* Drag ghost */}
       {isDragging && dragPlayerId != null && dragPos && (

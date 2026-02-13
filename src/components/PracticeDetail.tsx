@@ -67,6 +67,12 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
     reader.readAsDataURL(file);
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Delete this practice session? This cannot be undone.')) return;
+    await db.practices.delete(practiceId);
+    onClose();
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -235,14 +241,20 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-surface-5 shrink-0">
+        <div className="px-4 py-3 border-t border-surface-5 shrink-0 flex items-center gap-3">
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="w-full"
+            className="flex-1"
           >
             {saving ? 'Saving...' : 'Save'}
           </Button>
+          <button
+            onClick={handleDelete}
+            className="text-xs text-txt-faint hover:text-red-400 transition-colors shrink-0"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>

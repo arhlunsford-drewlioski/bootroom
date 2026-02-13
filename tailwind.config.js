@@ -26,7 +26,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"Bebas Neue"', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Bebas Neue"', 'system-ui', 'sans-serif'],
       },
     },
   },

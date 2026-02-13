@@ -59,6 +59,24 @@ export default function TeamSetup() {
     loadTeam();
   }
 
+  async function deletePlayer(playerId: number) {
+    if (!confirm('Remove this player from the roster?')) return;
+    await db.players.delete(playerId);
+    loadTeam();
+  }
+
+  async function deleteTeam() {
+    if (!team?.id) return;
+    if (!confirm('Delete this team and all its data (players, matches, practices)? This cannot be undone.')) return;
+    await db.players.where('teamId').equals(team.id).delete();
+    await db.matches.where('teamId').equals(team.id).delete();
+    await db.practices.where('teamId').equals(team.id).delete();
+    await db.seasonBlocks.where('teamId').equals(team.id).delete();
+    await db.teams.delete(team.id);
+    setTeam(null);
+    setPlayers([]);
+  }
+
   if (!team) {
     return (
       <div className="max-w-md mx-auto">
@@ -130,11 +148,20 @@ export default function TeamSetup() {
               <div key={player.id} className="px-3 py-2 bg-surface-3 rounded">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-txt-muted">#{player.jerseyNumber} {player.name}</span>
-                  {player.roleTag && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent border border-accent/40">
-                      {player.roleTag}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {player.roleTag && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent border border-accent/40">
+                        {player.roleTag}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => deletePlayer(player.id!)}
+                      className="text-txt-faint hover:text-red-400 transition-colors text-xs"
+                      title="Remove player"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 <RolePicker
                   value={player.roleTag}
@@ -145,6 +172,15 @@ export default function TeamSetup() {
             ))}
           </div>
         </Card>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-surface-5">
+        <button
+          onClick={deleteTeam}
+          className="text-xs text-txt-faint hover:text-red-400 transition-colors"
+        >
+          Delete Team
+        </button>
       </div>
     </div>
   );
