@@ -60,30 +60,55 @@ function App() {
     <div className="min-h-screen bg-surface-0 text-txt">
       <div className="flex flex-col md:flex-row">
         {/* Mobile header */}
-        <div className="md:hidden flex items-center justify-between bg-surface-1 border-b border-surface-5 px-4 py-3">
+        <div className="md:hidden flex items-center justify-between bg-surface-1 border-b border-surface-5 px-4 py-3 sticky top-0 z-40">
           <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">BOOTROOM</h1>
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            className="text-txt-muted hover:text-txt p-1"
+            className="text-txt-muted hover:text-txt p-2"
+            aria-label="Toggle navigation"
           >
-            {mobileNavOpen ? '✕' : '☰'}
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              {mobileNavOpen
+                ? <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                : <><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></>
+              }
+            </svg>
           </button>
         </div>
 
-        {/* Mobile nav dropdown */}
-        {mobileNavOpen && (
-          <nav className="md:hidden bg-surface-1 border-b border-surface-5 px-4 pb-3 space-y-1">
-            {navItem('dashboard', 'Dashboard')}
-            {navItem('team', 'Team')}
-            {navItem('matches', 'Matches')}
-            {navItem('week', 'Week', isDayFromWeek)}
-            {navItem('calendar', 'Calendar', isDayFromCalendar)}
-            {navItem('season', 'Season')}
-            <div className="border-t border-surface-5 mt-2 pt-2">
-              {navItem('settings', 'Settings')}
+        {/* Mobile nav overlay */}
+        <div
+          className={`md:hidden fixed inset-0 z-50 transition-opacity duration-200 ${
+            mobileNavOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileNavOpen(false)} />
+          {/* Slide-in panel */}
+          <nav
+            className={`absolute top-0 left-0 bottom-0 w-64 bg-surface-1 border-r border-surface-5 p-4 pt-6 flex flex-col transition-transform duration-200 ${
+              mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+            <h1
+              onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }}
+              className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer"
+            >
+              BOOTROOM
+            </h1>
+            <div className="space-y-1 flex-1">
+              {navItem('dashboard', 'Dashboard')}
+              {navItem('team', 'Team')}
+              {navItem('matches', 'Matches')}
+              {navItem('week', 'Week', isDayFromWeek)}
+              {navItem('calendar', 'Calendar', isDayFromCalendar)}
+              {navItem('season', 'Season')}
+              <div className="border-t border-surface-5 mt-2 pt-2">
+                {navItem('settings', 'Settings')}
+              </div>
             </div>
           </nav>
-        )}
+        </div>
 
         {/* Desktop sidebar */}
         <aside className="hidden md:block w-52 shrink-0 bg-surface-1 min-h-screen border-r border-surface-5 p-4">
@@ -101,7 +126,7 @@ function App() {
           </nav>
         </aside>
 
-        <main className="flex-1 p-4 md:p-6 min-w-0">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 min-w-0 overflow-x-hidden">
           {currentView === 'dashboard' && (
             <Dashboard
               teamId={teamId}

@@ -128,7 +128,7 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
   // Empty cells before month starts
   for (let i = 0; i < firstDay; i++) {
     cells.push(
-      <div key={`empty-${i}`} className="p-2 bg-surface-2 min-h-24" />
+      <div key={`empty-${i}`} className="p-1 sm:p-2 bg-surface-2 min-h-16 sm:min-h-24" />
     );
   }
 
@@ -148,7 +148,7 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
     cells.push(
       <div
         key={day}
-        className={`p-1.5 min-h-24 cursor-pointer transition-colors ${
+        className={`p-1 sm:p-1.5 min-h-16 sm:min-h-24 cursor-pointer transition-colors ${
           today ? 'bg-surface-3' : 'bg-surface-2 hover:bg-surface-3/50'
         }`}
         onClick={(e) => {
@@ -201,35 +201,35 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
   return (
     <div>
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
-        <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month - 1))}>
-          &larr; Prev
+      <div className="flex justify-between items-center mb-4 gap-2">
+        <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month - 1))} className="px-2 sm:px-3">
+          &larr;<span className="hidden sm:inline"> Prev</span>
         </Button>
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-txt">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h2 className="text-base sm:text-lg font-semibold text-txt">
             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h2>
           {!isCurrentMonth && (
             <button
               onClick={goToToday}
-              className="px-2.5 py-1 text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 rounded-md transition-colors"
+              className="px-2 py-1 text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 rounded-md transition-colors"
             >
               Today
             </button>
           )}
         </div>
-        <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month + 1))}>
-          Next &rarr;
+        <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month + 1))} className="px-2 sm:px-3">
+          <span className="hidden sm:inline">Next </span>&rarr;
         </Button>
       </div>
 
-      {/* Calendar grid */}
-      <div className="overflow-x-auto">
-        <div className="grid grid-cols-7 gap-px bg-surface-5 rounded-lg overflow-hidden border border-surface-5 min-w-[600px]">
+      {/* Calendar grid — full grid on sm+, scrollable on xs */}
+      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div className="grid grid-cols-7 gap-px bg-surface-5 rounded-lg overflow-hidden border border-surface-5 min-w-[480px] sm:min-w-0">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
             <div
               key={d}
-              className="py-2 text-center text-[10px] font-semibold uppercase tracking-wider bg-surface-3 text-txt-faint"
+              className="py-1.5 sm:py-2 text-center text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider bg-surface-3 text-txt-faint"
             >
               {d}
             </div>

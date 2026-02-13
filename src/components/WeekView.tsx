@@ -45,23 +45,23 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
   return (
     <div>
       {/* Header nav */}
-      <div className="flex justify-between items-center mb-4">
-        <Button variant="secondary" onClick={() => setWeekOffset(w => w - 1)}>
-          &larr; Prev
+      <div className="flex justify-between items-center mb-4 gap-2">
+        <Button variant="secondary" onClick={() => setWeekOffset(w => w - 1)} className="px-2 sm:px-3">
+          &larr;<span className="hidden sm:inline"> Prev</span>
         </Button>
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-txt">{weekLabel}</h2>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-txt truncate">{weekLabel}</h2>
           {weekOffset !== 0 && (
             <button
               onClick={() => setWeekOffset(0)}
-              className="px-2.5 py-1 text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 rounded-md transition-colors"
+              className="px-2 py-1 text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 rounded-md transition-colors shrink-0"
             >
               Today
             </button>
           )}
         </div>
-        <Button variant="secondary" onClick={() => setWeekOffset(w => w + 1)}>
-          Next &rarr;
+        <Button variant="secondary" onClick={() => setWeekOffset(w => w + 1)} className="px-2 sm:px-3">
+          <span className="hidden sm:inline">Next </span>&rarr;
         </Button>
       </div>
 
@@ -96,7 +96,7 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
             return (
               <div
                 key={dateStr}
-                className={`min-h-48 flex flex-col ${
+                className={`min-h-32 sm:min-h-48 flex flex-col ${
                   today ? 'bg-surface-3' : 'bg-surface-2'
                 }`}
               >

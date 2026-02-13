@@ -12,6 +12,11 @@ body {
   letter-spacing: normal;
 }
 
+/* Safe area padding for bottom sheets on notch devices */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 /* Force dark backgrounds on select options (browser defaults to white) */
 select option {
   background-color: #1a2740;

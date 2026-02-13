@@ -460,55 +460,53 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       style={{ touchAction: isDragging ? 'none' : 'auto' }}
     >
       {/* ═══ TOP BAR ═══ */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        {/* Back to Match button */}
-        {onBackToMatch && selectedMatchId && (
-          <button
-            onClick={() => onBackToMatch(selectedMatchId)}
-            className="text-sm text-txt-muted hover:text-accent transition-colors mr-1"
+      <div className="space-y-2 mb-3">
+        {/* Row 1: Back + Match selector + Formation */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {onBackToMatch && selectedMatchId && (
+            <button
+              onClick={() => onBackToMatch(selectedMatchId)}
+              className="text-sm text-txt-muted hover:text-accent transition-colors mr-1"
+            >
+              &larr; Back
+            </button>
+          )}
+
+          <Select
+            value={selectedMatchId ?? ''}
+            onChange={(e) => loadMatch(e.target.value ? Number(e.target.value) : null)}
+            className="flex-1 min-w-0 sm:flex-none sm:w-56"
           >
-            &larr; Back to Match
-          </button>
-        )}
+            <option value="">+ New Match</option>
+            {sortedMatches.map(m => {
+              const raw = m.date as unknown;
+              const dateStr = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(m.date);
+              return (
+                <option key={m.id} value={m.id}>{dateStr} vs {m.opponent}</option>
+              );
+            })}
+          </Select>
 
-        {/* Match selector */}
-        <Select
-          value={selectedMatchId ?? ''}
-          onChange={(e) => loadMatch(e.target.value ? Number(e.target.value) : null)}
-          className="flex-1 min-w-0 sm:flex-none sm:w-56"
-        >
-          <option value="">+ New Match</option>
-          {sortedMatches.map(m => {
-            const raw = m.date as unknown;
-            const dateStr = raw instanceof Date ? raw.toISOString().slice(0, 10) : String(m.date);
-            return (
-              <option key={m.id} value={m.id}>{dateStr} vs {m.opponent}</option>
-            );
-          })}
-        </Select>
+          <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
+            {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
+          </Select>
 
-        {/* Formation picker */}
-        <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
-          {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
-        </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-txt-faint font-mono">{assignedCount}/{slotCount}</span>
+            {detectedFormation && (
+              <span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>
+            )}
+          </div>
 
-        {/* Counter + detected */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-txt-faint font-mono">{assignedCount}/{slotCount}</span>
-          {detectedFormation && (
-            <span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>
+          {lineupDiff?.message && (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium hidden sm:inline ${
+              lineupDiff.newSpine ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20'
+            }`}>{lineupDiff.message}</span>
           )}
         </div>
 
-        {/* Lineup diff badge */}
-        {lineupDiff?.message && (
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium hidden sm:inline ${
-            lineupDiff.newSpine ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20'
-          }`}>{lineupDiff.message}</span>
-        )}
-
-        <div className="ml-auto flex items-center gap-2">
-          {/* Toggle match details */}
+        {/* Row 2: Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setShowMatchForm(!showMatchForm)}
             className={`text-xs px-2 py-1 rounded transition-colors ${showMatchForm ? 'bg-surface-3 text-accent' : 'text-txt-faint hover:text-txt'}`}
@@ -516,7 +514,6 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
             {showMatchForm ? 'Hide Details' : 'Match Info'}
           </button>
 
-          {/* Roster drawer toggle */}
           <button
             onClick={() => setDrawerOpen(!drawerOpen)}
             className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
@@ -529,40 +526,40 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            Squad
+            <span className="hidden sm:inline">Squad</span>
           </button>
 
-          {/* Export */}
-          <Button
-            variant="secondary"
-            onClick={async () => {
-              if (!fieldRef.current) return;
-              await exportLineupPng({
-                fieldSvg: fieldRef.current,
-                opponent,
-                matchDate,
-                formation: detectedFormation,
-              });
-            }}
-            disabled={Object.keys(assignments).length === 0}
-            className="px-3"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1.5 -mt-px">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!fieldRef.current) return;
+                await exportLineupPng({
+                  fieldSvg: fieldRef.current,
+                  opponent,
+                  matchDate,
+                  formation: detectedFormation,
+                });
+              }}
+              disabled={Object.keys(assignments).length === 0}
+              className="px-2 sm:px-3"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline sm:mr-1.5 -mt-px">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span className="hidden sm:inline">Export</span>
+            </Button>
 
-          {/* Save */}
-          <Button
-            onClick={saveLineup}
-            disabled={!canSave}
-            className={`px-4 transition-all ${saveFlash ? '!bg-emerald-500 !text-white' : ''}`}
-          >
-            {saveFlash ? 'Saved!' : selectedMatchId ? 'Save' : 'Create & Save'}
-          </Button>
+            <Button
+              onClick={saveLineup}
+              disabled={!canSave}
+              className={`px-3 sm:px-4 transition-all ${saveFlash ? '!bg-emerald-500 !text-white' : ''}`}
+            >
+              {saveFlash ? 'Saved!' : selectedMatchId ? 'Save' : 'Create'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -743,59 +740,66 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
           </div>
         )}
 
-        {/* Mobile: slide-up drawer */}
+        {/* Mobile: bottom sheet with backdrop */}
         {drawerOpen && (
-          <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-surface-1 border-t border-surface-5 rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col">
-            {/* Drag handle */}
-            <div className="flex justify-center pt-2 pb-1">
-              <div className="w-10 h-1 rounded-full bg-surface-5" />
-            </div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-2 border-b border-surface-5">
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setDrawerTab('roster')}
-                  className={`text-sm font-medium transition-colors ${drawerTab === 'roster' ? 'text-accent' : 'text-txt-muted'}`}
-                >
-                  Available ({availablePlayers.length})
-                </button>
-                <button
-                  onClick={() => setDrawerTab('bench')}
-                  className={`text-sm font-medium transition-colors ${drawerTab === 'bench' ? 'text-accent' : 'text-txt-muted'}`}
-                >
-                  Bench ({bench.length})
-                </button>
+          <>
+            {/* Backdrop */}
+            <div
+              className="lg:hidden fixed inset-0 z-30 bg-black/30"
+              onClick={() => setDrawerOpen(false)}
+            />
+            <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-surface-1 border-t border-surface-5 rounded-t-2xl shadow-2xl max-h-[55vh] flex flex-col">
+              {/* Drag handle */}
+              <div className="flex justify-center pt-2.5 pb-1.5 shrink-0">
+                <div className="w-10 h-1 rounded-full bg-surface-5" />
               </div>
-              <button onClick={() => setDrawerOpen(false)} className="text-txt-faint hover:text-txt text-sm p-1">✕</button>
-            </div>
 
-            {/* Content */}
-            <div ref={drawerOpen ? rosterRef : undefined} className="overflow-y-auto flex-1 p-3">
-              {drawerTab === 'roster' && (
-                <>
-                  <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-2" />
+              {/* Header */}
+              <div className="flex items-center justify-between px-4 pb-2.5 border-b border-surface-5 shrink-0">
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setDrawerTab('roster')}
+                    className={`text-sm font-medium transition-colors ${drawerTab === 'roster' ? 'text-accent' : 'text-txt-muted'}`}
+                  >
+                    Available ({availablePlayers.length})
+                  </button>
+                  <button
+                    onClick={() => setDrawerTab('bench')}
+                    className={`text-sm font-medium transition-colors ${drawerTab === 'bench' ? 'text-accent' : 'text-txt-muted'}`}
+                  >
+                    Bench ({bench.length})
+                  </button>
+                </div>
+                <button onClick={() => setDrawerOpen(false)} className="text-txt-faint hover:text-txt text-sm p-1.5">✕</button>
+              </div>
+
+              {/* Content */}
+              <div ref={drawerOpen ? rosterRef : undefined} className="overflow-y-auto flex-1 p-3 pb-safe">
+                {drawerTab === 'roster' && (
+                  <>
+                    <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-2" />
+                    <div className="space-y-1">
+                      {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
+                      {filteredRoster.length === 0 && (
+                        <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+                {drawerTab === 'bench' && (
                   <div className="space-y-1">
-                    {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
-                    {filteredRoster.length === 0 && (
-                      <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
+                    {bench.map(id => {
+                      const p = players.find(pl => pl.id === id);
+                      return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null;
+                    })}
+                    {bench.length === 0 && (
+                      <p className="text-xs text-txt-faint text-center py-4">Drag players here</p>
                     )}
                   </div>
-                </>
-              )}
-              {drawerTab === 'bench' && (
-                <div className="space-y-1">
-                  {bench.map(id => {
-                    const p = players.find(pl => pl.id === id);
-                    return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null;
-                  })}
-                  {bench.length === 0 && (
-                    <p className="text-xs text-txt-faint text-center py-4">Drag players here</p>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
