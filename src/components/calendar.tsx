@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { toDateStr, isToday } from '../utils/time';
+import { isToday } from '../utils/time';
 import PracticeDetail from './PracticeDetail';
 import Button from './ui/Button';
 
@@ -28,7 +28,6 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const todayStr = toDateStr(new Date());
   const isCurrentMonth =
     new Date().getFullYear() === year && new Date().getMonth() === month;
 
