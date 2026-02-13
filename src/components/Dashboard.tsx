@@ -89,8 +89,11 @@ export default function Dashboard({
 
       {/* Today card */}
       <section className="mb-8">
-        <h3 className="text-[10px] font-semibold uppercase text-txt-faint tracking-wider mb-3">
-          Today
+        <h3
+          onClick={() => onNavigateToDay(todayStr)}
+          className="text-[10px] font-semibold uppercase text-txt-faint tracking-wider mb-3 cursor-pointer hover:text-txt transition-colors"
+        >
+          Today &rarr;
         </h3>
         <Card className={todayEvents.length === 0 ? 'py-8' : ''}>
           {todayEvents.length === 0 ? (
