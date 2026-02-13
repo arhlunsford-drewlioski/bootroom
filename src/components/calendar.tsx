@@ -172,7 +172,7 @@ function WeekMatchCard({ match, onClick }: { match: Match; onClick: () => void }
 /* ── Main Calendar (month + week modes) ── */
 
 export default function Calendar({ teamId, initialMode, onNavigateToDay, onNavigateToMatch }: CalendarProps) {
-  const [mode, setMode] = useState<ViewMode>(initialMode ?? 'week');
+  const [mode, setMode] = useState<ViewMode>(initialMode ?? 'month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
@@ -217,20 +217,20 @@ export default function Calendar({ teamId, initialMode, onNavigateToDay, onNavig
   const modeToggle = (
     <div className="flex bg-surface-2 rounded-md p-0.5 border border-surface-5">
       <button
-        onClick={() => setMode('week')}
-        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-          mode === 'week' ? 'bg-surface-4 text-txt' : 'text-txt-faint hover:text-txt'
-        }`}
-      >
-        Week
-      </button>
-      <button
         onClick={() => setMode('month')}
         className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
           mode === 'month' ? 'bg-surface-4 text-txt' : 'text-txt-faint hover:text-txt'
         }`}
       >
         Month
+      </button>
+      <button
+        onClick={() => setMode('week')}
+        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+          mode === 'week' ? 'bg-surface-4 text-txt' : 'text-txt-faint hover:text-txt'
+        }`}
+      >
+        Week
       </button>
     </div>
   );
