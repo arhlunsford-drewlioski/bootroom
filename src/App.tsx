@@ -4,17 +4,16 @@ import { db } from './db/database';
 import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
 import LineupCreator from './components/LineupCreator';
-import WeekView from './components/WeekView';
 import Calendar from './components/calendar';
 import DayView from './components/DayView';
 import SeasonOverview from './components/SeasonOverview';
 import MatchDetail from './components/MatchDetail';
 import Settings from './components/Settings';
 
+
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [dayViewOrigin, setDayViewOrigin] = useState<'week' | 'calendar'>('week');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [lineupMatchId, setLineupMatchId] = useState<number | null>(null);
@@ -22,9 +21,8 @@ function App() {
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const teamId = team?.id ?? 0;
 
-  const navigateToDay = (dateStr: string, from?: 'week' | 'calendar') => {
+  const navigateToDay = (dateStr: string) => {
     setSelectedDate(dateStr);
-    setDayViewOrigin(from ?? 'week');
     setCurrentView('day');
   };
 
@@ -37,8 +35,7 @@ function App() {
     }
   };
 
-  const isDayFromWeek = currentView === 'day' && dayViewOrigin === 'week';
-  const isDayFromCalendar = currentView === 'day' && dayViewOrigin === 'calendar';
+  const isDayFromCalendar = currentView === 'day';
 
   const navItem = (view: string, label: string, alsoActive?: boolean) => {
     const active = currentView === view || alsoActive === true;
@@ -100,7 +97,6 @@ function App() {
               {navItem('dashboard', 'Dashboard')}
               {navItem('team', 'Team')}
               {navItem('matches', 'Matches')}
-              {navItem('week', 'Week', isDayFromWeek)}
               {navItem('calendar', 'Calendar', isDayFromCalendar)}
               {navItem('season', 'Season')}
               <div className="border-t border-surface-5 mt-2 pt-2">
@@ -117,7 +113,6 @@ function App() {
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
-            {navItem('week', 'Week', isDayFromWeek)}
             {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
             <div className="border-t border-surface-5 mt-2 pt-2">
@@ -146,17 +141,10 @@ function App() {
               }}
             />
           )}
-          {currentView === 'week' && (
-            <WeekView
-              teamId={teamId}
-              onNavigateToDay={navigateToDay}
-              onNavigateToMatch={navigateToMatch}
-            />
-          )}
           {currentView === 'calendar' && (
             <Calendar
               teamId={teamId}
-              onNavigateToDay={(dateStr) => navigateToDay(dateStr, 'calendar')}
+              onNavigateToDay={navigateToDay}
               onNavigateToMatch={navigateToMatch}
             />
           )}
@@ -164,8 +152,8 @@ function App() {
             <DayView
               teamId={teamId}
               dateStr={selectedDate}
-              onBack={() => setCurrentView(dayViewOrigin)}
-              backLabel={dayViewOrigin === 'calendar' ? 'Back to Calendar' : 'Back to Week'}
+              onBack={() => setCurrentView('calendar')}
+              backLabel="Back to Calendar"
               onNavigateToMatch={navigateToMatch}
               onDateChange={(dateStr) => setSelectedDate(dateStr)}
             />

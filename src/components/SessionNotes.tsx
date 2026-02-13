@@ -11,13 +11,14 @@ interface SessionNotesProps {
 }
 
 function getElapsedTimestamp(sessionStartTime: string | undefined): string {
-  if (!sessionStartTime) {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  }
+  const now = new Date();
+  const fallback = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  if (!sessionStartTime || !sessionStartTime.includes(':')) return fallback;
 
   const [startH, startM] = sessionStartTime.split(':').map(Number);
-  const now = new Date();
+  if (isNaN(startH) || isNaN(startM)) return fallback;
+
   const startMinutes = startH * 60 + startM;
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const elapsed = Math.max(0, nowMinutes - startMinutes);

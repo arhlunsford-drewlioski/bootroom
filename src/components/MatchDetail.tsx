@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
+import type { SessionNote } from '../db/database';
 import { to12Hour } from '../utils/time';
+import { TACTICAL_INTENT_TAGS, KEY_MATCH_TAGS, TACTICAL_TAGS } from '../constants/tags';
 import Button from './ui/Button';
 import Input from './ui/Input';
 import Textarea from './ui/Textarea';
+import TagPicker from './ui/TagPicker';
 import ConfirmDialog from './ui/ConfirmDialog';
 
 interface MatchDetailProps {
@@ -22,7 +25,7 @@ function deriveOutcome(goalsFor: number | undefined, goalsAgainst: number | unde
 
 function formatResult(goalsFor: number | undefined, goalsAgainst: number | undefined): string {
   if (goalsFor == null || goalsAgainst == null) return '';
-  return `${goalsFor}–${goalsAgainst}`;
+  return `${goalsFor}\u2013${goalsAgainst}`;
 }
 
 export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDetailProps) {
@@ -33,8 +36,14 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
   const [completed, setCompleted] = useState(false);
   const [notes, setNotes] = useState('');
   const [reflection, setReflection] = useState('');
+  const [tacticalIntentTags, setTacticalIntentTags] = useState<string[]>([]);
+  const [inGameNotes, setInGameNotes] = useState<SessionNote[]>([]);
+  const [keyTags, setKeyTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // In-game note input
+  const [noteText, setNoteText] = useState('');
 
   useEffect(() => {
     if (match) {
@@ -43,6 +52,9 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
       setCompleted(match.completed ?? false);
       setNotes(match.notes ?? '');
       setReflection(match.reflection ?? '');
+      setTacticalIntentTags(match.tacticalIntentTags ?? []);
+      setInGameNotes(match.inGameNotes ?? []);
+      setKeyTags(match.keyTags ?? []);
     }
   }, [match]);
 
@@ -61,6 +73,9 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
         result,
         notes: notes || undefined,
         reflection: reflection || undefined,
+        tacticalIntentTags: tacticalIntentTags.length > 0 ? tacticalIntentTags : undefined,
+        inGameNotes: inGameNotes.length > 0 ? inGameNotes : undefined,
+        keyTags: keyTags.length > 0 ? keyTags : undefined,
       });
     } finally {
       setSaving(false);
@@ -74,6 +89,22 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
     onClose();
   };
 
+  // In-game notes helpers
+  const addInGameNote = (text: string, tags?: string[]) => {
+    const now = new Date();
+    const timestamp = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    setInGameNotes(prev => [...prev, {
+      text: text.trim(),
+      timestamp,
+      tags: tags && tags.length > 0 ? tags : undefined,
+    }]);
+    setNoteText('');
+  };
+
+  const removeInGameNote = (index: number) => {
+    setInGameNotes(prev => prev.filter((_, i) => i !== index));
+  };
+
   if (!match) {
     return (
       <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
@@ -83,10 +114,9 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
   }
 
   const formattedDate = new Date(match.date + 'T00:00:00').toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
-    year: 'numeric',
   });
 
   const gf = goalsFor !== '' ? Number(goalsFor) : undefined;
@@ -101,6 +131,8 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
         ? 'bg-amber-500/15 text-amber-400'
         : '';
 
+  const lineupStatus = match.lineup && match.lineup.length > 0;
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center">
       <div className="bg-surface-1 w-full sm:max-w-2xl sm:rounded-lg border border-surface-5 max-h-[95vh] flex flex-col rounded-t-2xl sm:rounded-t-lg">
@@ -113,98 +145,236 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
             &larr; Back
           </button>
           <div className="flex items-center gap-2">
-            <StatusPill completed={completed} />
+            <button
+              onClick={() => setCompleted(c => !c)}
+              className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                completed
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'bg-surface-4 text-txt-faint'
+              }`}
+            >
+              {completed ? 'Completed' : 'Upcoming'}
+            </button>
           </div>
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto flex-1 p-4 space-y-5">
-          {/* Top: opponent, date/time, location */}
-          <div>
-            <h2 className="text-lg font-semibold text-accent">vs {match.opponent}</h2>
-            <p className="text-xs text-txt-faint mt-1">
-              {formattedDate} &middot; {to12Hour(match.time)}
-              {match.location && <span> &middot; {match.location}</span>}
-            </p>
-            {match.formation && (
-              <p className="text-xs text-txt-muted mt-1">
-                Formation: <span className="font-mono font-bold text-accent">{match.formation}</span>
-                {match.lineup && match.lineup.length > 0 && (
-                  <span className="text-txt-faint"> &middot; {match.lineup.length} in lineup</span>
+        <div className="overflow-y-auto flex-1 p-4 space-y-4">
+
+          {/* ═══ PRE-MATCH ═══ */}
+          <section>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-faint mb-3">Pre-Match</div>
+
+            {/* Match info header */}
+            <div className="rounded-lg border border-surface-5 bg-surface-2 p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-accent">vs {match.opponent}</h2>
+                  <p className="text-xs text-txt-faint mt-1">
+                    {formattedDate} &middot; {to12Hour(match.time)}
+                    {match.location && <span className="text-txt-faint"> &middot; {match.location}</span>}
+                  </p>
+                </div>
+                {outcome && (
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${outcomeColor}`}>
+                    {formatResult(gf, ga)} {outcome}
+                  </span>
                 )}
-              </p>
+              </div>
+
+              {/* Lineup + Formation row */}
+              <div className="flex items-center gap-3 mt-3">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${lineupStatus ? 'bg-emerald-400' : 'bg-surface-5'}`} />
+                  <span className="text-xs text-txt-muted truncate">
+                    {lineupStatus
+                      ? `Lineup set${match.formation ? ` \u00b7 ${match.formation}` : ''} \u00b7 ${match.lineup!.length} players`
+                      : 'Lineup not set'}
+                  </span>
+                </div>
+                <Button variant="secondary" onClick={onOpenLineup} className="text-xs shrink-0">
+                  {lineupStatus ? 'Edit Lineup' : 'Set Lineup'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Tactical Intent Tags */}
+            <div className="mt-3">
+              <TagPicker
+                label="Tactical Intent"
+                options={[...TACTICAL_INTENT_TAGS]}
+                selected={tacticalIntentTags}
+                onChange={setTacticalIntentTags}
+                max={4}
+                allowCustom
+              />
+            </div>
+
+            {/* Pre-game notes */}
+            <div className="mt-3">
+              <Textarea
+                label="Pre-Game Notes"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={2}
+                placeholder="Key matchups, set piece plan, shape adjustments..."
+              />
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="border-t border-surface-5" />
+
+          {/* ═══ IN-GAME ═══ */}
+          <section>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-faint mb-3">In-Game Notes</div>
+
+            {/* Rolling notes list */}
+            {inGameNotes.length > 0 && (
+              <div className="space-y-1.5 mb-3 max-h-48 overflow-y-auto">
+                {inGameNotes.map((note, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 px-3 py-2 rounded bg-surface-2 border border-surface-5 group"
+                  >
+                    <span className="text-[10px] text-accent font-mono mt-0.5 shrink-0">
+                      [{note.timestamp}]
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm text-txt">{note.text}</span>
+                      {note.tags && note.tags.length > 0 && (
+                        <div className="flex gap-1 mt-0.5">
+                          {note.tags.map(tag => (
+                            <span key={tag} className="px-1.5 py-0 rounded text-[9px] font-medium bg-accent/10 text-accent/70">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeInGameNote(i)}
+                      className="text-txt-faint hover:text-red-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
 
-          {/* Open Lineup button */}
-          <Button onClick={onOpenLineup} className="w-full">
-            Open Lineup
-          </Button>
-
-          {/* Result entry */}
-          <div className="rounded-lg border border-surface-5 bg-surface-2 p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-txt">Result</h3>
-              {outcome && (
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${outcomeColor}`}>
-                  {formatResult(gf, ga)} {outcome}
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Note input */}
+            <div className="flex gap-2">
               <Input
-                label="Goals For"
-                type="number"
-                min="0"
-                value={goalsFor}
-                onChange={e => setGoalsFor(e.target.value)}
-                placeholder="0"
+                value={noteText}
+                onChange={e => setNoteText(e.target.value)}
+                placeholder="Quick note..."
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && noteText.trim()) {
+                    e.preventDefault();
+                    addInGameNote(noteText);
+                  }
+                }}
               />
-              <Input
-                label="Goals Against"
-                type="number"
-                min="0"
-                value={goalsAgainst}
-                onChange={e => setGoalsAgainst(e.target.value)}
-                placeholder="0"
+              <button
+                type="button"
+                onClick={() => { if (noteText.trim()) addInGameNote(noteText); }}
+                disabled={!noteText.trim()}
+                className="h-9 px-3 rounded-md text-sm bg-accent text-surface-1 font-medium hover:bg-accent-dark disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Quick tactical adjustment tags */}
+            <div className="mt-2">
+              <label className="block text-[10px] font-medium text-txt-faint mb-1.5">Quick Tags</label>
+              <div className="flex flex-wrap gap-1">
+                {TACTICAL_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => addInGameNote(tag, [tag])}
+                    className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-3 text-txt-muted border border-surface-5 hover:bg-surface-4 hover:text-txt transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="border-t border-surface-5" />
+
+          {/* ═══ POST-MATCH ═══ */}
+          <section>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-txt-faint mb-3">Post-Match</div>
+
+            {/* Result entry */}
+            <div className="rounded-lg border border-surface-5 bg-surface-2 p-3">
+              <h3 className="text-xs font-semibold text-txt mb-2">Result</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Goals For"
+                  type="number"
+                  min="0"
+                  value={goalsFor}
+                  onChange={e => setGoalsFor(e.target.value)}
+                  placeholder="0"
+                />
+                <Input
+                  label="Goals Against"
+                  type="number"
+                  min="0"
+                  value={goalsAgainst}
+                  onChange={e => setGoalsAgainst(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Key Tags */}
+            <div className="mt-3">
+              <TagPicker
+                label="Key Tags"
+                options={[...KEY_MATCH_TAGS]}
+                selected={keyTags}
+                onChange={setKeyTags}
+                max={3}
+                allowCustom
               />
             </div>
-          </div>
 
-          {/* Completed toggle */}
-          <button
-            onClick={() => setCompleted(c => !c)}
-            className="w-full flex items-center justify-between rounded-lg border border-surface-5 bg-surface-2 px-4 py-3"
-          >
-            <span className="text-sm text-txt">Mark as Completed</span>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${completed ? 'bg-emerald-500' : 'bg-surface-4'}`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${completed ? 'left-5' : 'left-1'}`} />
+            {/* Reflection */}
+            <div className="mt-3">
+              <Textarea
+                label="Reflection"
+                value={reflection}
+                onChange={e => setReflection(e.target.value)}
+                rows={2}
+                placeholder="What worked? What needs fixing?"
+              />
             </div>
-          </button>
-
-          {/* Notes section */}
-          <div className="space-y-4">
-            <Textarea
-              label="Pre-Game Notes"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Tactical plan, key matchups, set pieces..."
-            />
-            <Textarea
-              label="Post-Game Reflection"
-              value={reflection}
-              onChange={e => setReflection(e.target.value)}
-              rows={3}
-              placeholder="What went well? What needs work?"
-            />
-          </div>
+          </section>
         </div>
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-surface-5 shrink-0 flex items-center gap-3">
-          <Button onClick={handleSave} disabled={saving} className="flex-1">
+          <Button
+            variant="secondary"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1"
+          >
             {saving ? 'Saving...' : 'Save'}
+          </Button>
+          <Button
+            onClick={async () => { await handleSave(); onClose(); }}
+            disabled={saving}
+            className="flex-1"
+          >
+            {saving ? 'Saving...' : 'Save & Close'}
           </Button>
           <button
             onClick={handleDelete}
@@ -225,19 +395,5 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
         onCancel={() => setShowDeleteConfirm(false)}
       />
     </div>
-  );
-}
-
-function StatusPill({ completed }: { completed: boolean }) {
-  return (
-    <span
-      className={`px-3 py-1 rounded-full text-[10px] font-medium transition-colors ${
-        completed
-          ? 'bg-emerald-500/15 text-emerald-400'
-          : 'bg-surface-4 text-txt-faint'
-      }`}
-    >
-      {completed ? 'Completed' : 'Upcoming'}
-    </span>
   );
 }

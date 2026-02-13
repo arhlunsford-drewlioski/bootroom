@@ -1,0 +1,8 @@
+Features to Add
+    - Export lineup as an image
+    - Saving to device, hard save no just 
+    - click on a game sends you to a lineup creator
+    - matches - renamed lineups?
+    - landing page: Team name, today at a glance calendar view
+    - matches page - season games with results enterable?
+    - notes sections for completed matchs?

@@ -49,7 +49,9 @@ export function shiftDate(dateStr: string, days: number): string {
 
 /** Convert "HH:mm" 24-hour string to "h:mm AM/PM" display string */
 export function to12Hour(hhmm: string): string {
+  if (!hhmm || !hhmm.includes(':')) return hhmm || '';
   const [h, m] = hhmm.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return hhmm;
   const period = h >= 12 ? 'PM' : 'AM';
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;

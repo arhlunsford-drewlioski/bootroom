@@ -41,6 +41,9 @@ export interface Match {
   reflection?: string;
   notes?: string;
   opponentTraits?: string[];
+  tacticalIntentTags?: string[];
+  inGameNotes?: SessionNote[];
+  keyTags?: string[];
 }
 
 export interface SessionNote {

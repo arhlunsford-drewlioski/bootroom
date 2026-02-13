@@ -77,6 +77,36 @@ export const TACTICAL_TAGS = [
   'Overload Flanks',
 ] as const;
 
+// Match: Tactical Intent (pre-match plan, pick up to 4)
+export const TACTICAL_INTENT_TAGS = [
+  'High Press',
+  'Sit Deep',
+  'Possession',
+  'Direct Play',
+  'Counter-Attack',
+  'Wing Play',
+  'Control Tempo',
+  'Set Pieces',
+  'Press Triggers',
+  'Man Mark #10',
+] as const;
+
+// Match: Post-Match Key Tags (pick 3)
+export const KEY_MATCH_TAGS = [
+  'Dominated',
+  'Clinical',
+  'Sloppy Start',
+  'Strong 2nd Half',
+  'Poor Transition',
+  'Set Piece Goals',
+  'Tactical Shift Worked',
+  'Lost Shape',
+  'Good Press',
+  'Wasteful',
+  'Resilient',
+  'Outplayed',
+] as const;
+
 // Feature 5: Season block labels
 export const SEASON_BLOCK_LABELS = [
   'Preseason',
