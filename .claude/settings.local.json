@@ -13,7 +13,10 @@
       "Bash(npm install:*)",
       "Bash(netstat:*)",
       "Bash(npm run dev:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(xargs cat:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(/Users/andrewlunsford/bootroom/.claude/worktrees/charming-jones/node_modules/.bin/tsc:*)"
     ]
   }
 }

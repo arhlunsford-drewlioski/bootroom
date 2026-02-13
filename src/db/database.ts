@@ -17,7 +17,26 @@ export interface Player {
   name: string;
   jerseyNumber: number;
   preferredPositions?: string[];
+  positionTags?: string[];
   roleTag?: string;
+}
+
+export interface PlayerStats {
+  id?: number;
+  playerId: number;
+  teamId: number;
+  matchId?: number;
+  date: string;
+  minutesPlayed?: number;
+  goals?: number;
+  assists?: number;
+  yellowCards?: number;
+  redCards?: number;
+  attended?: boolean;
+  // Goalkeeper stats (players with "Keeper" positionTag/roleTag)
+  saves?: number;
+  cleanSheets?: number;
+  penaltiesSaved?: number;
 }
 
 export interface LineupEntry {
@@ -96,6 +115,42 @@ export interface Practice {
   reflection?: string;
 }
 
+export interface PlayerEvaluation {
+  id?: number;
+  playerId: number;
+  teamId: number;
+  date: string;
+  // Technical
+  techPassing?: number;
+  techDribbling?: number;
+  techBallManipulation?: number;
+  techStriking?: number;
+  techReceiving?: number;
+  techTackling?: number;
+  techCreativity?: number;
+  // Tactical
+  tacAttackingDecisions?: number;
+  tacAttackingPassDribble?: number;
+  tacAttackingPositioning?: number;
+  tacDefendingPCB?: number;
+  tacDefendingPressHoldDrop?: number;
+  tacAttackingTransitions?: number;
+  tacDefensiveTransitions?: number;
+  // Psychological
+  psyCompetitiveness?: number;
+  psyFocus?: number;
+  psyResilience?: number;
+  psyCommunication?: number;
+  psySelfDevelopment?: number;
+  // Physical
+  physAgility?: number;
+  physQuickness?: number;
+  physFitness?: number;
+  physStrength?: number;
+  // Notes
+  notes?: string;
+}
+
 export interface SeasonBlock {
   id?: number;
   teamId: number;
@@ -114,6 +169,8 @@ class BootroomDatabase extends Dexie {
   seasonBlocks!: Table<SeasonBlock>;
   opponents!: Table<Opponent>;
   lineupTemplates!: Table<LineupTemplate>;
+  playerEvaluations!: Table<PlayerEvaluation>;
+  playerStats!: Table<PlayerStats>;
 
   constructor() {
     super('BootroomDB');
@@ -155,6 +212,17 @@ class BootroomDatabase extends Dexie {
       seasonBlocks: '++id, teamId, startDate',
       opponents: '++id, teamId',
       lineupTemplates: '++id, teamId, matchId'
+    });
+    this.version(5).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId',
+      playerEvaluations: '++id, playerId, teamId, date',
+      playerStats: '++id, playerId, teamId, matchId, date'
     });
   }
 }

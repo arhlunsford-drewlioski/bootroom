@@ -8,6 +8,7 @@ import Button from './ui/Button';
 import Card from './ui/Card';
 import RolePicker from './ui/RolePicker';
 import ConfirmDialog from './ui/ConfirmDialog';
+import PlayerCard from './PlayerCard';
 
 const TEAM_COLOR_PRESETS = [
   '#1a56db', '#2563eb', '#0891b2', '#059669', '#15803d',
@@ -27,6 +28,7 @@ export default function TeamSetup() {
   const [secondaryColor, setSecondaryColor] = useState<string>('');
   const [deletePlayerId, setDeletePlayerId] = useState<number | null>(null);
   const [showDeleteTeamConfirm, setShowDeleteTeamConfirm] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   useEffect(() => {
     loadTeam();
@@ -80,6 +82,9 @@ export default function TeamSetup() {
   async function confirmDeletePlayer() {
     if (deletePlayerId == null) return;
     await db.players.delete(deletePlayerId);
+    // Also delete evaluations and stats for this player
+    await db.playerEvaluations.where('playerId').equals(deletePlayerId).delete();
+    await db.playerStats.where('playerId').equals(deletePlayerId).delete();
     setDeletePlayerId(null);
     loadTeam();
   }
@@ -107,11 +112,16 @@ export default function TeamSetup() {
     await db.matches.where('teamId').equals(team.id).delete();
     await db.practices.where('teamId').equals(team.id).delete();
     await db.seasonBlocks.where('teamId').equals(team.id).delete();
+    await db.playerEvaluations.where('teamId').equals(team.id).delete();
+    await db.playerStats.where('teamId').equals(team.id).delete();
     await db.teams.delete(team.id);
     setShowDeleteTeamConfirm(false);
     setTeam(null);
     setPlayers([]);
   }
+
+  // Sort players by jersey number
+  const sortedPlayers = [...players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
 
   if (!team) {
     return (
@@ -143,12 +153,19 @@ export default function TeamSetup() {
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
-        <h2 className="text-lg font-semibold text-txt">{team.name}</h2>
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">
-          {team.gameFormat ?? '11v11'}
-        </span>
+    <div className="max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-txt tracking-wide font-display">ROSTER</h2>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">
+            {team.gameFormat ?? '11v11'}
+          </span>
+          <span className="text-xs text-txt-faint">{players.length} players</span>
+        </div>
+        <Button onClick={() => setShowAddForm(!showAddForm)}>
+          {showAddForm ? 'Cancel' : '+ Add Player'}
+        </Button>
       </div>
 
       {/* Team Colors */}
@@ -227,65 +244,61 @@ export default function TeamSetup() {
         )}
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Add Player */}
-        <Card className="space-y-3">
-          <h3 className="text-sm font-semibold text-txt">Add Player</h3>
-          <Input
-            type="text"
-            placeholder="Player name"
-            value={playerName}
-            onChange={(e) => setPlayerName(e.target.value)}
-          />
-          <Input
-            type="number"
-            placeholder="Jersey #"
-            value={jerseyNumber}
-            onChange={(e) => setJerseyNumber(e.target.value)}
-          />
+      {/* Add Player form */}
+      {showAddForm && (
+        <div className="bg-surface-1 rounded-lg border border-surface-5 p-4 mb-6 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Player Name"
+              placeholder="Full name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              autoFocus
+            />
+            <Input
+              label="Jersey #"
+              type="number"
+              placeholder="Number"
+              value={jerseyNumber}
+              onChange={(e) => setJerseyNumber(e.target.value)}
+            />
+          </div>
           <div>
             <label className="block text-xs font-medium text-txt-muted mb-1">Role (optional)</label>
             <RolePicker value={newPlayerRole} onChange={setNewPlayerRole} />
           </div>
-          <Button onClick={addPlayer} className="w-full">
-            Add Player
-          </Button>
-        </Card>
-
-        {/* Roster */}
-        <Card>
-          <h3 className="text-sm font-semibold text-txt mb-3">Roster ({players.length})</h3>
-          <div className="space-y-1.5">
-            {players.map(player => (
-              <div key={player.id} className="px-3 py-2 bg-surface-3 rounded">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-txt-muted">#{player.jerseyNumber} {player.name}</span>
-                  <div className="flex items-center gap-2">
-                    {player.roleTag && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent border border-accent/40">
-                        {player.roleTag}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => deletePlayer(player.id!)}
-                      className="text-txt-faint hover:text-red-400 transition-colors text-xs"
-                      title="Remove player"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-                <RolePicker
-                  value={player.roleTag}
-                  onChange={(role) => updatePlayerRole(player.id!, role)}
-                  className="mt-1.5"
-                />
-              </div>
-            ))}
+          <div className="flex justify-end pt-1">
+            <Button
+              onClick={addPlayer}
+              disabled={!playerName.trim() || !jerseyNumber}
+            >
+              Add Player
+            </Button>
           </div>
-        </Card>
+        </div>
+      )}
+
+      {/* Player cards */}
+      <div className="space-y-2">
+        {sortedPlayers.map(player => (
+          <PlayerCard
+            key={player.id}
+            player={player}
+            onDelete={deletePlayer}
+            onUpdateRole={updatePlayerRole}
+          />
+        ))}
       </div>
 
+      {/* Empty state */}
+      {players.length === 0 && !showAddForm && (
+        <div className="text-center py-16">
+          <p className="text-txt-faint text-sm mb-4">No players yet. Add your first player.</p>
+          <Button onClick={() => setShowAddForm(true)}>+ Add Player</Button>
+        </div>
+      )}
+
+      {/* Delete team */}
       <div className="mt-6 pt-4 border-t border-surface-5">
         <button
           onClick={deleteTeam}
@@ -298,7 +311,7 @@ export default function TeamSetup() {
       <ConfirmDialog
         open={deletePlayerId !== null}
         title="Remove Player"
-        message="Remove this player from the roster?"
+        message="Remove this player from the roster? Their evaluation history will also be deleted."
         confirmLabel="Remove"
         variant="danger"
         onConfirm={confirmDeletePlayer}
@@ -308,7 +321,7 @@ export default function TeamSetup() {
       <ConfirmDialog
         open={showDeleteTeamConfirm}
         title="Delete Team"
-        message="Delete this team and all its data (players, matches, practices)? This cannot be undone."
+        message="Delete this team and all its data (players, matches, practices, evaluations)? This cannot be undone."
         confirmLabel="Delete"
         variant="danger"
         onConfirm={confirmDeleteTeam}

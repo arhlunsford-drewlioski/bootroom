@@ -115,8 +115,11 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
                   </div>
                 </button>
 
-                {/* Events */}
-                <div className="px-1.5 pb-2 flex-1 space-y-1">
+                {/* Events — clicking empty space opens add-event */}
+                <div
+                  className="px-1.5 pb-2 flex-1 space-y-1 cursor-pointer"
+                  onClick={() => setAddDate(dateStr)}
+                >
                   {allEvents.map(event =>
                     event.type === 'practice' ? (
                       <PracticeCard
@@ -132,21 +135,6 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
                       />
                     )
                   )}
-                  {allEvents.length === 0 && (
-                    <button
-                      onClick={() => setAddDate(dateStr)}
-                      className="w-full text-[11px] text-txt-faint/50 text-center pt-4 pb-2 hover:text-accent transition-colors cursor-pointer"
-                    >
-                      + Add event
-                    </button>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setAddDate(dateStr); }}
-                    className="mx-auto mt-1 w-6 h-6 rounded-full bg-surface-4 hover:bg-accent text-txt-faint hover:text-surface-0 flex items-center justify-center text-xs transition-colors"
-                    title="Add event"
-                  >
-                    +
-                  </button>
                 </div>
               </div>
             );
@@ -181,7 +169,7 @@ function PracticeCard({ practice, onClick }: { practice: Practice; onClick: () =
 
   return (
     <div
-      onClick={onClick}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
       className="bg-surface-3 rounded p-1.5 cursor-pointer hover:bg-surface-4 transition-colors text-xs"
     >
       <div className="text-txt-faint text-[10px]">
@@ -224,7 +212,7 @@ function PracticeCard({ practice, onClick }: { practice: Practice; onClick: () =
 function MatchCard({ match, onClick }: { match: Match; onClick: () => void }) {
   return (
     <div
-      onClick={onClick}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
       className="bg-accent/5 border border-accent/15 rounded p-1.5 cursor-pointer hover:bg-accent/10 transition-colors text-xs"
     >
       <div className="text-txt-faint text-[10px]">{to12Hour(match.time)}</div>
