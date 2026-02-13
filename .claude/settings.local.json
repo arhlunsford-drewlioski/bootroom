@@ -10,7 +10,10 @@
       "Bash(ls:*)",
       "Bash(del C:UsersarhluDesktopbootroomsrccomponentsMatchPlanner.tsx)",
       "WebFetch(domain:www.cufonfonts.com)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout:*)"
     ]
   }
 }
