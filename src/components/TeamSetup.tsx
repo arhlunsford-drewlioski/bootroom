@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { db } from '../db/database';
-import type { Team, Player } from '../db/database';
+import type { Team, Player, GameFormat } from '../db/database';
 import Input from './ui/Input';
+import Select from './ui/Select';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import RolePicker from './ui/RolePicker';
@@ -10,6 +11,7 @@ export default function TeamSetup() {
   const [team, setTeam] = useState<Team | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [teamName, setTeamName] = useState('');
+  const [gameFormat, setGameFormat] = useState<GameFormat>('11v11');
   const [playerName, setPlayerName] = useState('');
   const [jerseyNumber, setJerseyNumber] = useState('');
   const [newPlayerRole, setNewPlayerRole] = useState<string | undefined>();
@@ -31,9 +33,10 @@ export default function TeamSetup() {
     if (!teamName.trim()) return;
     const id = await db.teams.add({
       name: teamName,
+      gameFormat,
       createdAt: new Date()
     });
-    setTeam({ id, name: teamName, createdAt: new Date() });
+    setTeam({ id, name: teamName, gameFormat, createdAt: new Date() });
     setTeamName('');
   }
 
@@ -67,6 +70,16 @@ export default function TeamSetup() {
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
           />
+          <Select
+            label="Game Format"
+            value={gameFormat}
+            onChange={(e) => setGameFormat(e.target.value as GameFormat)}
+          >
+            <option value="11v11">11v11</option>
+            <option value="9v9">9v9</option>
+            <option value="7v7">7v7</option>
+            <option value="5v5">5v5</option>
+          </Select>
           <Button onClick={createTeam} className="w-full">
             Create Team
           </Button>
@@ -77,7 +90,12 @@ export default function TeamSetup() {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-txt mb-4">{team.name}</h2>
+      <div className="flex items-center gap-3 mb-4">
+        <h2 className="text-lg font-semibold text-txt">{team.name}</h2>
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">
+          {team.gameFormat ?? '11v11'}
+        </span>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Add Player */}

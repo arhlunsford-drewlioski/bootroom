@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Player, LineupEntry } from '../db/database';
 import SoccerField from './SoccerField';
-import { FORMATIONS, DEFAULT_FORMATION_ID, getFormation, detectFormation } from './formations';
+import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT, getDetectionThreshold, getFormation, detectFormation } from './formations';
 import type { PositionSlot } from './formations';
 import { OPPONENT_TRAITS } from '../constants/tags';
 import { compareLineups } from '../utils/lineup-diff';
@@ -34,8 +34,15 @@ export default function LineupCreator() {
   const [matchTime, setMatchTime] = useState('');
   const [location, setLocation] = useState('');
 
+  // Game format derived from team
+  const gameFormat = team?.gameFormat ?? '11v11';
+  const formatFormations = getFormationsForFormat(gameFormat);
+  const slotCount = FORMAT_SLOT_COUNT[gameFormat];
+  const detectionThreshold = getDetectionThreshold(gameFormat);
+  const defaultFormationId = DEFAULT_FORMATION_FOR_FORMAT[gameFormat];
+
   // Formation & lineup
-  const [formationId, setFormationId] = useState(DEFAULT_FORMATION_ID);
+  const [formationId, setFormationId] = useState(defaultFormationId);
   const [assignments, setAssignments] = useState<Record<string, number>>({});
   const [bench, setBench] = useState<number[]>([]);
 
@@ -69,6 +76,13 @@ export default function LineupCreator() {
   const benchRef = useRef<HTMLDivElement | null>(null);
   const rosterRef = useRef<HTMLDivElement | null>(null);
 
+  // Reset formation when game format loads (only if no match selected)
+  useEffect(() => {
+    if (!selectedMatchId) {
+      setFormationId(defaultFormationId);
+    }
+  }, [defaultFormationId, selectedMatchId]);
+
   // Filter
   const [rosterFilter, setRosterFilter] = useState('');
 
@@ -83,7 +97,7 @@ export default function LineupCreator() {
   );
 
   const filledSlots = formation.slots.filter(s => assignments[s.id] != null);
-  const detectedFormation = filledSlots.length >= 10 ? detectFormation(filledSlots) : null;
+  const detectedFormation = filledSlots.length >= detectionThreshold ? detectFormation(filledSlots) : null;
 
   // Feature 1: Build roleTags Record (merge player defaults + per-match overrides)
   const roleTags = useMemo(() => {
@@ -103,7 +117,7 @@ export default function LineupCreator() {
 
   // Feature 4: Lineup diff
   const lineupDiff = useMemo(() => {
-    if (!selectedMatchId || Object.keys(assignments).length < 8) return null;
+    if (!selectedMatchId || Object.keys(assignments).length < Math.ceil(slotCount * 0.7)) return null;
     const currentMatch = matches.find(m => m.id === selectedMatchId);
     if (!currentMatch) return null;
     const previousMatches = matches
@@ -124,7 +138,7 @@ export default function LineupCreator() {
     setSelectedMatchId(matchId);
     if (matchId == null) {
       setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
-      setAssignments({}); setBench([]); setFormationId(DEFAULT_FORMATION_ID);
+      setAssignments({}); setBench([]); setFormationId(defaultFormationId);
       setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
       return;
     }
@@ -139,7 +153,7 @@ export default function LineupCreator() {
     if (match.formation && getFormation(match.formation)) {
       setFormationId(match.formation);
     } else {
-      setFormationId(DEFAULT_FORMATION_ID);
+      setFormationId(defaultFormationId);
     }
     const newAssignments: Record<string, number> = {};
     const newRoleOverrides: Record<string, string> = {};
@@ -464,7 +478,7 @@ export default function LineupCreator() {
         <div className="flex items-center gap-3">
           <label className="text-sm text-txt-muted">Formation</label>
           <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
-            {FORMATIONS.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
+            {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
           </Select>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
@@ -474,7 +488,7 @@ export default function LineupCreator() {
             }`}>{lineupDiff.message}</span>
           )}
           {detectedFormation && (<span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>)}
-          <span className="text-xs text-txt-faint">{Object.keys(assignments).length}/11</span>
+          <span className="text-xs text-txt-faint">{Object.keys(assignments).length}/{slotCount}</span>
         </div>
       </Card>
 

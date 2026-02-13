@@ -1,8 +1,11 @@
 import Dexie, { type Table } from 'dexie';
 
+export type GameFormat = '11v11' | '9v9' | '7v7' | '5v5';
+
 export interface Team {
   id?: number;
   name: string;
+  gameFormat: GameFormat;
   createdAt: Date;
 }
 
@@ -88,6 +91,19 @@ class BootroomDatabase extends Dexie {
       matches: '++id, teamId, date',
       practices: '++id, teamId, date',
       seasonBlocks: '++id, teamId, startDate'
+    });
+    this.version(2).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate'
+    }).upgrade(tx => {
+      return tx.table('teams').toCollection().modify(team => {
+        if (!team.gameFormat) {
+          team.gameFormat = '11v11';
+        }
+      });
     });
   }
 }

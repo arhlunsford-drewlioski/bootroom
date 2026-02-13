@@ -1,3 +1,5 @@
+import type { GameFormat } from '../db/database';
+
 export type Tier = 'GK' | 'DEF' | 'DMID' | 'MID' | 'AMID' | 'FWD';
 
 export interface PositionSlot {
@@ -235,8 +237,233 @@ export const FORMATIONS: FormationTemplate[] = [
 
 export const DEFAULT_FORMATION_ID = '4-2-3-1';
 
+// ═══════════════════════════════════════════════════════
+// 9v9 Formations (9 slots each, incl. GK)
+// ═══════════════════════════════════════════════════════
+
+const GK_9: PositionSlot = { id: '9v9-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+
+const FORMATIONS_9V9: FormationTemplate[] = [
+  {
+    id: '9v9-3-3-2',
+    name: '3-3-2',
+    slots: [
+      GK_9,
+      { id: '9v9-LCB', label: 'CB', tier: 'DEF', x: 25, y: 22 },
+      { id: '9v9-CB',  label: 'CB', tier: 'DEF', x: 50, y: 20 },
+      { id: '9v9-RCB', label: 'CB', tier: 'DEF', x: 75, y: 22 },
+      { id: '9v9-LM',  label: 'LM', tier: 'MID', x: 20, y: 48 },
+      { id: '9v9-CM',  label: 'CM', tier: 'MID', x: 50, y: 45 },
+      { id: '9v9-RM',  label: 'RM', tier: 'MID', x: 80, y: 48 },
+      { id: '9v9-LST', label: 'ST', tier: 'FWD', x: 38, y: 78 },
+      { id: '9v9-RST', label: 'ST', tier: 'FWD', x: 62, y: 78 },
+    ],
+  },
+  {
+    id: '9v9-3-2-3',
+    name: '3-2-3',
+    slots: [
+      GK_9,
+      { id: '9v9-LCB', label: 'CB', tier: 'DEF', x: 25, y: 22 },
+      { id: '9v9-CB',  label: 'CB', tier: 'DEF', x: 50, y: 20 },
+      { id: '9v9-RCB', label: 'CB', tier: 'DEF', x: 75, y: 22 },
+      { id: '9v9-LCM', label: 'CM', tier: 'MID', x: 35, y: 45 },
+      { id: '9v9-RCM', label: 'CM', tier: 'MID', x: 65, y: 45 },
+      { id: '9v9-LW',  label: 'LW', tier: 'FWD', x: 20, y: 75 },
+      { id: '9v9-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+      { id: '9v9-RW',  label: 'RW', tier: 'FWD', x: 80, y: 75 },
+    ],
+  },
+  {
+    id: '9v9-2-3-3',
+    name: '2-3-3',
+    slots: [
+      GK_9,
+      { id: '9v9-LCB', label: 'CB', tier: 'DEF', x: 30, y: 22 },
+      { id: '9v9-RCB', label: 'CB', tier: 'DEF', x: 70, y: 22 },
+      { id: '9v9-LM',  label: 'LM', tier: 'MID', x: 20, y: 48 },
+      { id: '9v9-CM',  label: 'CM', tier: 'MID', x: 50, y: 45 },
+      { id: '9v9-RM',  label: 'RM', tier: 'MID', x: 80, y: 48 },
+      { id: '9v9-LW',  label: 'LW', tier: 'FWD', x: 20, y: 75 },
+      { id: '9v9-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+      { id: '9v9-RW',  label: 'RW', tier: 'FWD', x: 80, y: 75 },
+    ],
+  },
+  {
+    id: '9v9-2-4-2',
+    name: '2-4-2',
+    slots: [
+      GK_9,
+      { id: '9v9-LCB', label: 'CB', tier: 'DEF', x: 30, y: 22 },
+      { id: '9v9-RCB', label: 'CB', tier: 'DEF', x: 70, y: 22 },
+      { id: '9v9-LM',  label: 'LM', tier: 'MID', x: 15, y: 48 },
+      { id: '9v9-LCM', label: 'CM', tier: 'MID', x: 38, y: 45 },
+      { id: '9v9-RCM', label: 'CM', tier: 'MID', x: 62, y: 45 },
+      { id: '9v9-RM',  label: 'RM', tier: 'MID', x: 85, y: 48 },
+      { id: '9v9-LST', label: 'ST', tier: 'FWD', x: 38, y: 78 },
+      { id: '9v9-RST', label: 'ST', tier: 'FWD', x: 62, y: 78 },
+    ],
+  },
+  {
+    id: '9v9-3-1-2-2',
+    name: '3-1-2-2',
+    slots: [
+      GK_9,
+      { id: '9v9-LCB', label: 'CB',  tier: 'DEF',  x: 25, y: 22 },
+      { id: '9v9-CB',  label: 'CB',  tier: 'DEF',  x: 50, y: 20 },
+      { id: '9v9-RCB', label: 'CB',  tier: 'DEF',  x: 75, y: 22 },
+      { id: '9v9-CDM', label: 'CDM', tier: 'DMID', x: 50, y: 38 },
+      { id: '9v9-LAM', label: 'AM',  tier: 'AMID', x: 35, y: 60 },
+      { id: '9v9-RAM', label: 'AM',  tier: 'AMID', x: 65, y: 60 },
+      { id: '9v9-LST', label: 'ST',  tier: 'FWD',  x: 38, y: 80 },
+      { id: '9v9-RST', label: 'ST',  tier: 'FWD',  x: 62, y: 80 },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// 7v7 Formations (7 slots each, incl. GK)
+// ═══════════════════════════════════════════════════════
+
+const GK_7: PositionSlot = { id: '7v7-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+
+const FORMATIONS_7V7: FormationTemplate[] = [
+  {
+    id: '7v7-2-3-1',
+    name: '2-3-1',
+    slots: [
+      GK_7,
+      { id: '7v7-LCB', label: 'CB', tier: 'DEF', x: 30, y: 22 },
+      { id: '7v7-RCB', label: 'CB', tier: 'DEF', x: 70, y: 22 },
+      { id: '7v7-LM',  label: 'LM', tier: 'MID', x: 20, y: 48 },
+      { id: '7v7-CM',  label: 'CM', tier: 'MID', x: 50, y: 45 },
+      { id: '7v7-RM',  label: 'RM', tier: 'MID', x: 80, y: 48 },
+      { id: '7v7-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+    ],
+  },
+  {
+    id: '7v7-3-2-1',
+    name: '3-2-1',
+    slots: [
+      GK_7,
+      { id: '7v7-LCB', label: 'CB', tier: 'DEF', x: 25, y: 22 },
+      { id: '7v7-CB',  label: 'CB', tier: 'DEF', x: 50, y: 20 },
+      { id: '7v7-RCB', label: 'CB', tier: 'DEF', x: 75, y: 22 },
+      { id: '7v7-LCM', label: 'CM', tier: 'MID', x: 35, y: 50 },
+      { id: '7v7-RCM', label: 'CM', tier: 'MID', x: 65, y: 50 },
+      { id: '7v7-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+    ],
+  },
+  {
+    id: '7v7-2-2-2',
+    name: '2-2-2',
+    slots: [
+      GK_7,
+      { id: '7v7-LCB', label: 'CB', tier: 'DEF', x: 30, y: 22 },
+      { id: '7v7-RCB', label: 'CB', tier: 'DEF', x: 70, y: 22 },
+      { id: '7v7-LCM', label: 'CM', tier: 'MID', x: 30, y: 48 },
+      { id: '7v7-RCM', label: 'CM', tier: 'MID', x: 70, y: 48 },
+      { id: '7v7-LST', label: 'ST', tier: 'FWD', x: 35, y: 78 },
+      { id: '7v7-RST', label: 'ST', tier: 'FWD', x: 65, y: 78 },
+    ],
+  },
+  {
+    id: '7v7-1-3-2',
+    name: '1-3-2',
+    slots: [
+      GK_7,
+      { id: '7v7-CB',  label: 'CB', tier: 'DEF', x: 50, y: 20 },
+      { id: '7v7-LM',  label: 'LM', tier: 'MID', x: 20, y: 48 },
+      { id: '7v7-CM',  label: 'CM', tier: 'MID', x: 50, y: 45 },
+      { id: '7v7-RM',  label: 'RM', tier: 'MID', x: 80, y: 48 },
+      { id: '7v7-LST', label: 'ST', tier: 'FWD', x: 35, y: 78 },
+      { id: '7v7-RST', label: 'ST', tier: 'FWD', x: 65, y: 78 },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// 5v5 Formations (5 slots each, incl. GK)
+// ═══════════════════════════════════════════════════════
+
+const GK_5: PositionSlot = { id: '5v5-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+
+const FORMATIONS_5V5: FormationTemplate[] = [
+  {
+    id: '5v5-2-1-1',
+    name: '2-1-1',
+    slots: [
+      GK_5,
+      { id: '5v5-LCB', label: 'CB', tier: 'DEF', x: 30, y: 25 },
+      { id: '5v5-RCB', label: 'CB', tier: 'DEF', x: 70, y: 25 },
+      { id: '5v5-CM',  label: 'CM', tier: 'MID', x: 50, y: 50 },
+      { id: '5v5-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+    ],
+  },
+  {
+    id: '5v5-1-2-1',
+    name: '1-2-1',
+    slots: [
+      GK_5,
+      { id: '5v5-CB',  label: 'CB', tier: 'DEF', x: 50, y: 22 },
+      { id: '5v5-LCM', label: 'CM', tier: 'MID', x: 30, y: 50 },
+      { id: '5v5-RCM', label: 'CM', tier: 'MID', x: 70, y: 50 },
+      { id: '5v5-ST',  label: 'ST', tier: 'FWD', x: 50, y: 80 },
+    ],
+  },
+  {
+    id: '5v5-2-2',
+    name: '2-2',
+    slots: [
+      GK_5,
+      { id: '5v5-LCB', label: 'CB', tier: 'DEF', x: 30, y: 25 },
+      { id: '5v5-RCB', label: 'CB', tier: 'DEF', x: 70, y: 25 },
+      { id: '5v5-LST', label: 'ST', tier: 'FWD', x: 35, y: 65 },
+      { id: '5v5-RST', label: 'ST', tier: 'FWD', x: 65, y: 65 },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════════════════
+// Format-keyed lookup + helpers
+// ═══════════════════════════════════════════════════════
+
+export const FORMATIONS_BY_FORMAT: Record<GameFormat, FormationTemplate[]> = {
+  '11v11': FORMATIONS,
+  '9v9': FORMATIONS_9V9,
+  '7v7': FORMATIONS_7V7,
+  '5v5': FORMATIONS_5V5,
+};
+
+export const FORMAT_SLOT_COUNT: Record<GameFormat, number> = {
+  '11v11': 11,
+  '9v9': 9,
+  '7v7': 7,
+  '5v5': 5,
+};
+
+export const DEFAULT_FORMATION_FOR_FORMAT: Record<GameFormat, string> = {
+  '11v11': '4-2-3-1',
+  '9v9': '9v9-3-3-2',
+  '7v7': '7v7-2-3-1',
+  '5v5': '5v5-2-1-1',
+};
+
+export function getFormationsForFormat(format: GameFormat): FormationTemplate[] {
+  return FORMATIONS_BY_FORMAT[format];
+}
+
+export function getDetectionThreshold(format: GameFormat): number {
+  return FORMAT_SLOT_COUNT[format] - 1;
+}
+
+/** Searches all formats so old match data still resolves */
 export function getFormation(id: string): FormationTemplate | undefined {
-  return FORMATIONS.find(f => f.id === id);
+  for (const formations of Object.values(FORMATIONS_BY_FORMAT)) {
+    const found = formations.find(f => f.id === id);
+    if (found) return found;
+  }
+  return undefined;
 }
 
 export function detectFormation(filledSlots: PositionSlot[]): string {
