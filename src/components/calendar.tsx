@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
+import { posthog } from '../analytics';
 import { isToday } from '../utils/time';
 import PracticeDetail from './PracticeDetail';
 import Button from './ui/Button';
@@ -11,17 +12,83 @@ interface CalendarProps {
   onNavigateToMatch?: () => void;
 }
 
+/* ── tiny popover that appears on day-cell click ── */
+function DayPopover({
+  dateStr,
+  anchorRect,
+  onClose,
+  onViewDay,
+  onAddMatch,
+  onAddPractice,
+}: {
+  dateStr: string;
+  anchorRect: DOMRect;
+  onClose: () => void;
+  onViewDay: () => void;
+  onAddMatch: () => void;
+  onAddPractice: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  // Position below the click anchor, clamped to viewport
+  const top = anchorRect.bottom + 4;
+  const left = Math.max(8, Math.min(anchorRect.left, window.innerWidth - 170));
+
+  const label = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const btn = (text: string, onClick: () => void, accent?: boolean) => (
+    <button
+      onClick={() => { onClick(); onClose(); }}
+      className={`w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
+        accent
+          ? 'text-accent hover:bg-accent/10'
+          : 'text-txt-muted hover:bg-surface-4 hover:text-txt'
+      }`}
+    >
+      {text}
+    </button>
+  );
+
+  return (
+    <div
+      ref={ref}
+      style={{ position: 'fixed', top, left, zIndex: 60 }}
+      className="w-40 bg-surface-2 border border-surface-5 rounded-lg shadow-lg py-1"
+    >
+      <div className="px-3 py-1.5 text-[10px] font-semibold text-txt-faint uppercase tracking-wider">
+        {label}
+      </div>
+      {btn('View Day', onViewDay, true)}
+      {btn('+ Add Match', onAddMatch)}
+      {btn('+ Add Practice', onAddPractice)}
+    </div>
+  );
+}
+
 export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
+  const [popover, setPopover] = useState<{ dateStr: string; rect: DOMRect } | null>(null);
 
   const matches = useLiveQuery(
-    () => db.matches.where('teamId').equals(teamId).toArray(),
+    () => teamId ? db.matches.where('teamId').equals(teamId).toArray() : [],
     [teamId]
   );
 
   const practices = useLiveQuery(
-    () => db.practices.where('teamId').equals(teamId).toArray(),
+    () => teamId ? db.practices.where('teamId').equals(teamId).toArray() : [],
     [teamId]
   );
 
@@ -32,6 +99,25 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
     new Date().getFullYear() === year && new Date().getMonth() === month;
 
   const goToToday = () => setCurrentDate(new Date());
+
+  // Quick-add handlers
+  const quickAddMatch = (dateStr: string) => {
+    const opponent = prompt('Opponent name:');
+    const time = prompt('Time (e.g., 14:00):');
+    if (opponent && time) {
+      db.matches.add({ teamId, opponent, date: dateStr, time, location: '' })
+        .then(() => posthog.capture('match_created'));
+    }
+  };
+
+  const quickAddPractice = (dateStr: string) => {
+    const focus = prompt('Session focus (e.g., "Possession"):');
+    const time = prompt('Time (e.g., 16:00):');
+    if (focus && time) {
+      db.practices.add({ teamId, focus, date: dateStr, time, status: 'planned' })
+        .then(() => posthog.capture('practice_created'));
+    }
+  };
 
   // Build calendar grid
   const firstDay = new Date(year, month, 1).getDay();
@@ -65,7 +151,10 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
         className={`p-1.5 min-h-24 cursor-pointer transition-colors ${
           today ? 'bg-surface-3' : 'bg-surface-2 hover:bg-surface-3/50'
         }`}
-        onClick={() => onNavigateToDay?.(dateStr)}
+        onClick={(e) => {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setPopover({ dateStr, rect });
+        }}
       >
         {/* Day number */}
         <div className={`text-xs font-semibold mb-1 leading-none ${
@@ -160,6 +249,18 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
           Practice
         </div>
       </div>
+
+      {/* Day action popover */}
+      {popover && (
+        <DayPopover
+          dateStr={popover.dateStr}
+          anchorRect={popover.rect}
+          onClose={() => setPopover(null)}
+          onViewDay={() => onNavigateToDay?.(popover.dateStr)}
+          onAddMatch={() => quickAddMatch(popover.dateStr)}
+          onAddPractice={() => quickAddPractice(popover.dateStr)}
+        />
+      )}
 
       {/* PracticeDetail modal */}
       {selectedPracticeId !== null && (
