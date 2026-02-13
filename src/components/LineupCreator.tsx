@@ -13,11 +13,15 @@ import TagPicker from './ui/TagPicker';
 import Input from './ui/Input';
 import Select from './ui/Select';
 import Button from './ui/Button';
-import Card from './ui/Card';
 
 type DragOrigin = 'roster' | 'bench' | 'field';
 
-export default function LineupCreator() {
+interface LineupCreatorProps {
+  initialMatchId?: number | null;
+  onBackToMatch?: (matchId: number) => void;
+}
+
+export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupCreatorProps) {
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const players = useLiveQuery(
     () => (team?.id ? db.players.where('teamId').equals(team.id).toArray() : []),
@@ -47,11 +51,11 @@ export default function LineupCreator() {
   const [assignments, setAssignments] = useState<Record<string, number>>({});
   const [bench, setBench] = useState<number[]>([]);
 
-  // Feature 1: Role overrides per match
+  // Role overrides per match
   const [roleOverrides, setRoleOverrides] = useState<Record<string, string>>({});
   const [editingRoleSlotId, setEditingRoleSlotId] = useState<string | null>(null);
 
-  // Feature 2: Opponent traits
+  // Opponent traits
   const [opponentTraits, setOpponentTraits] = useState<string[]>([]);
   const [showOpponentProfile, setShowOpponentProfile] = useState(false);
 
@@ -69,8 +73,15 @@ export default function LineupCreator() {
   // Highlight
   const [highlightSlotId, setHighlightSlotId] = useState<string | null>(null);
 
-  // Mobile tab
-  const [mobileTab, setMobileTab] = useState<'roster' | 'bench'>('roster');
+  // Drawer state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'roster' | 'bench' | 'details'>('roster');
+
+  // Match details expanded (desktop inline)
+  const [showMatchForm, setShowMatchForm] = useState(false);
+
+  // Save feedback
+  const [saveFlash, setSaveFlash] = useState(false);
 
   // Refs for hit testing
   const fieldRef = useRef<SVGSVGElement | null>(null);
@@ -83,6 +94,14 @@ export default function LineupCreator() {
       setFormationId(defaultFormationId);
     }
   }, [defaultFormationId, selectedMatchId]);
+
+  // Load initial match when prop changes
+  useEffect(() => {
+    if (initialMatchId != null && matches.length > 0 && selectedMatchId !== initialMatchId) {
+      loadMatch(initialMatchId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMatchId, matches.length]);
 
   // Filter
   const [rosterFilter, setRosterFilter] = useState('');
@@ -100,7 +119,7 @@ export default function LineupCreator() {
   const filledSlots = formation.slots.filter(s => assignments[s.id] != null);
   const detectedFormation = filledSlots.length >= detectionThreshold ? detectFormation(filledSlots) : null;
 
-  // Feature 1: Build roleTags Record (merge player defaults + per-match overrides)
+  // Build roleTags Record (merge player defaults + per-match overrides)
   const roleTags = useMemo(() => {
     const tags: Record<string, string> = {};
     for (const [slotId, playerId] of Object.entries(assignments)) {
@@ -116,7 +135,7 @@ export default function LineupCreator() {
     return tags;
   }, [assignments, roleOverrides, players]);
 
-  // Feature 4: Lineup diff
+  // Lineup diff
   const lineupDiff = useMemo(() => {
     if (!selectedMatchId || Object.keys(assignments).length < Math.ceil(slotCount * 0.7)) return null;
     const currentMatch = matches.find(m => m.id === selectedMatchId);
@@ -133,7 +152,7 @@ export default function LineupCreator() {
       ([slotId, playerId]) => ({ slotId, playerId }),
     );
     return compareLineups(currentLineup, prevMatch.lineup!, formation.slots, prevSlots);
-  }, [selectedMatchId, assignments, matches, formation.slots]);
+  }, [selectedMatchId, assignments, matches, formation.slots, slotCount]);
 
   function loadMatch(matchId: number | null) {
     setSelectedMatchId(matchId);
@@ -141,6 +160,7 @@ export default function LineupCreator() {
       setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
       setAssignments({}); setBench([]); setFormationId(defaultFormationId);
       setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
+      setShowMatchForm(true);
       return;
     }
     const match = matches.find(m => m.id === matchId);
@@ -167,6 +187,7 @@ export default function LineupCreator() {
     setRoleOverrides(newRoleOverrides);
     setOpponentTraits(match.opponentTraits ?? []);
     setEditingRoleSlotId(null);
+    setShowMatchForm(false);
   }
 
   function changeFormation(newId: string) {
@@ -222,6 +243,8 @@ export default function LineupCreator() {
       posthog.capture('match_created');
       posthog.capture('lineup_saved');
     }
+    setSaveFlash(true);
+    setTimeout(() => setSaveFlash(false), 1500);
   }
 
   // === Drag and drop via pointer events ===
@@ -246,6 +269,7 @@ export default function LineupCreator() {
       const slotId = hitTestSlot(pos.x, pos.y);
       setHighlightSlotId(slotId);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragPlayerId, isDragging]);
 
   const handlePointerUp = useCallback(() => {
@@ -395,7 +419,7 @@ export default function LineupCreator() {
       <div
         onPointerDown={(e) => startDrag(e, player.id!, origin)}
         onClick={() => handlePlayerClick(player.id!)}
-        className={`flex items-center gap-3 px-3 py-2 rounded select-none transition-colors ${
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg select-none transition-colors ${
           isBeingDragged
             ? 'opacity-30'
             : isPending
@@ -404,7 +428,7 @@ export default function LineupCreator() {
         }`}
         style={{ touchAction: 'none' }}
       >
-        <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-bold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-bold shrink-0">
           {player.jerseyNumber}
         </div>
         <span className="text-sm text-txt truncate">{player.name}</span>
@@ -424,20 +448,33 @@ export default function LineupCreator() {
   }
 
   const sortedMatches = [...matches].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const assignedCount = Object.keys(assignments).length;
+  const canSave = opponent && matchDate && matchTime;
 
   return (
     <div
-      className="flex flex-col gap-3 select-none"
+      className="flex flex-col select-none"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       style={{ touchAction: isDragging ? 'none' : 'auto' }}
     >
-      {/* Match selector */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* ═══ TOP BAR ═══ */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {/* Back to Match button */}
+        {onBackToMatch && selectedMatchId && (
+          <button
+            onClick={() => onBackToMatch(selectedMatchId)}
+            className="text-sm text-txt-muted hover:text-accent transition-colors mr-1"
+          >
+            &larr; Back to Match
+          </button>
+        )}
+
+        {/* Match selector */}
         <Select
           value={selectedMatchId ?? ''}
           onChange={(e) => loadMatch(e.target.value ? Number(e.target.value) : null)}
-          className="w-full sm:w-auto"
+          className="flex-1 min-w-0 sm:flex-none sm:w-56"
         >
           <option value="">+ New Match</option>
           {sortedMatches.map(m => {
@@ -448,157 +485,293 @@ export default function LineupCreator() {
             );
           })}
         </Select>
-      </div>
 
-      {/* Match details */}
-      <Card className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <Input type="text" placeholder="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} />
-        <Input type="date" value={matchDate} onChange={e => setMatchDate(e.target.value)} />
-        <Input type="time" value={matchTime} onChange={e => setMatchTime(e.target.value)} />
-        <Input type="text" placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
-      </Card>
+        {/* Formation picker */}
+        <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
+          {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
+        </Select>
 
-      {/* Opponent Profile */}
-      <Card className="py-3">
-        <button onClick={() => setShowOpponentProfile(!showOpponentProfile)} className="w-full flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-txt">Opponent Profile</h3>
-            {opponentTraits.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent">
-                {opponentTraits.length} trait{opponentTraits.length !== 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <span className="text-txt-faint text-sm">{showOpponentProfile ? '▾' : '▸'}</span>
-        </button>
-        {showOpponentProfile && (
-          <div className="mt-3">
-            <TagPicker label="Scouting traits (up to 5)" options={OPPONENT_TRAITS} selected={opponentTraits} onChange={setOpponentTraits} max={5} allowCustom />
-          </div>
-        )}
-        {!showOpponentProfile && opponentTraits.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {opponentTraits.map(trait => (
-              <span key={trait} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">{trait}</span>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Formation selector + lineup diff */}
-      <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-3">
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-txt-muted">Formation</label>
-          <Select value={formationId} onChange={e => changeFormation(e.target.value)} className="w-auto">
-            {formatFormations.map(f => (<option key={f.id} value={f.id}>{f.name}</option>))}
-          </Select>
-        </div>
-        <div className="flex items-center gap-4 flex-wrap">
-          {lineupDiff?.message && (
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium ${
-              lineupDiff.newSpine ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20'
-            }`}>{lineupDiff.message}</span>
+        {/* Counter + detected */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-txt-faint font-mono">{assignedCount}/{slotCount}</span>
+          {detectedFormation && (
+            <span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>
           )}
-          {detectedFormation && (<span className="text-sm text-accent font-mono font-bold">{detectedFormation}</span>)}
-          <span className="text-xs text-txt-faint">{Object.keys(assignments).length}/{slotCount}</span>
-        </div>
-      </Card>
-
-      {/* Three-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_180px] gap-3">
-        {/* Roster — desktop */}
-        <div ref={rosterRef} className="hidden lg:flex flex-col bg-surface-1 rounded-lg border border-surface-5 p-3 max-h-[600px]">
-          <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-3" />
-          <div className="overflow-y-auto space-y-1 flex-1">
-            {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
-            {filteredRoster.length === 0 && (
-              <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
-            )}
-          </div>
         </div>
 
-        {/* Field */}
-        <Card className="p-3">
-          <SoccerField
-            formation={formation} assignments={assignments} players={players}
-            detectedFormation={detectedFormation} highlightSlotId={highlightSlotId}
-            onSlotPointerDown={handleSlotPointerDown} onSlotClick={handleSlotClick}
-            onSlotDoubleClick={handleSlotDoubleClick} pendingAssign={pendingAssignPlayerId != null}
-            fieldRef={fieldRef} roleTags={roleTags}
-          />
-          {editingRoleSlotId && assignments[editingRoleSlotId] != null && (() => {
-            const slotPlayer = players.find(p => p.id === assignments[editingRoleSlotId]);
-            const slotInfo = formation.slots.find(s => s.id === editingRoleSlotId);
-            return (
-              <div className="mt-3 p-3 rounded-lg bg-surface-2 border border-surface-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-txt-muted">Role for #{slotPlayer?.jerseyNumber} {slotPlayer?.name} ({slotInfo?.label})</span>
-                  <button onClick={() => setEditingRoleSlotId(null)} className="text-xs text-txt-faint hover:text-txt transition-colors">✕</button>
-                </div>
-                <RolePicker
-                  value={roleOverrides[editingRoleSlotId] ?? slotPlayer?.roleTag}
-                  onChange={(role) => {
-                    setRoleOverrides(prev => {
-                      const next = { ...prev };
-                      if (role) next[editingRoleSlotId] = role;
-                      else delete next[editingRoleSlotId];
-                      return next;
-                    });
-                  }}
-                />
-              </div>
-            );
-          })()}
-        </Card>
+        {/* Lineup diff badge */}
+        {lineupDiff?.message && (
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium hidden sm:inline ${
+            lineupDiff.newSpine ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' : 'bg-amber-500/10 text-amber-400/80 border border-amber-500/20'
+          }`}>{lineupDiff.message}</span>
+        )}
 
-        {/* Bench — desktop */}
-        <div ref={benchRef} className="hidden lg:flex flex-col bg-surface-1 rounded-lg border border-surface-5 p-3 max-h-[600px]">
-          <h3 className="text-sm font-semibold text-txt-muted mb-3">Bench ({bench.length})</h3>
-          <div className="overflow-y-auto space-y-1 flex-1">
-            {bench.map(id => { const p = players.find(pl => pl.id === id); return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null; })}
-            {bench.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">Drag players here</p>)}
-          </div>
+        <div className="ml-auto flex items-center gap-2">
+          {/* Toggle match details */}
+          <button
+            onClick={() => setShowMatchForm(!showMatchForm)}
+            className={`text-xs px-2 py-1 rounded transition-colors ${showMatchForm ? 'bg-surface-3 text-accent' : 'text-txt-faint hover:text-txt'}`}
+          >
+            {showMatchForm ? 'Hide Details' : 'Match Info'}
+          </button>
+
+          {/* Roster drawer toggle */}
+          <button
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
+              drawerOpen ? 'bg-accent text-surface-1 font-semibold' : 'bg-surface-3 text-txt hover:bg-surface-4'
+            }`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            Squad
+          </button>
+
+          {/* Save */}
+          <Button
+            onClick={saveLineup}
+            disabled={!canSave}
+            className={`px-4 transition-all ${saveFlash ? '!bg-emerald-500 !text-white' : ''}`}
+          >
+            {saveFlash ? 'Saved!' : selectedMatchId ? 'Save' : 'Create & Save'}
+          </Button>
         </div>
       </div>
 
-      {/* Mobile tabs for roster/bench */}
-      <Card className="lg:hidden p-3">
-        <div className="flex border-b border-surface-5 mb-3">
-          <button onClick={() => setMobileTab('roster')} className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === 'roster' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}>
-            Available ({availablePlayers.length})
-          </button>
-          <button onClick={() => setMobileTab('bench')} className={`flex-1 py-2 text-sm font-medium transition-colors ${mobileTab === 'bench' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}>
-            Bench ({bench.length})
-          </button>
-        </div>
-        {mobileTab === 'roster' ? (
+      {/* ═══ MATCH DETAILS (collapsible) ═══ */}
+      {showMatchForm && (
+        <div className="bg-surface-1 rounded-lg border border-surface-5 p-3 mb-3 space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <Input type="text" placeholder="Opponent" value={opponent} onChange={e => setOpponent(e.target.value)} />
+            <Input type="date" value={matchDate} onChange={e => setMatchDate(e.target.value)} />
+            <Input type="time" value={matchTime} onChange={e => setMatchTime(e.target.value)} />
+            <Input type="text" placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
+          </div>
+
+          {/* Opponent Profile */}
           <div>
-            <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-3" />
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
-              {filteredRoster.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>)}
+            <button onClick={() => setShowOpponentProfile(!showOpponentProfile)} className="flex items-center gap-2 text-sm text-txt-muted hover:text-txt transition-colors">
+              <span>{showOpponentProfile ? '▾' : '▸'}</span>
+              <span>Opponent Profile</span>
+              {opponentTraits.length > 0 && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent">{opponentTraits.length}</span>
+              )}
+            </button>
+            {showOpponentProfile && (
+              <div className="mt-2">
+                <TagPicker label="Scouting traits (up to 5)" options={OPPONENT_TRAITS} selected={opponentTraits} onChange={setOpponentTraits} max={5} allowCustom />
+              </div>
+            )}
+            {!showOpponentProfile && opponentTraits.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {opponentTraits.map(trait => (
+                  <span key={trait} className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/10 text-accent border border-accent/20">{trait}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {selectedMatchId && (
+            <button onClick={deleteMatch} className="text-xs text-txt-faint hover:text-red-400 transition-colors">
+              Delete Match
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ═══ MAIN AREA: PITCH + DRAWER ═══ */}
+      <div className="flex gap-3 relative">
+        {/* PITCH (fills remaining space) */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-surface-1 rounded-lg border border-surface-5 p-2 sm:p-3">
+            <SoccerField
+              formation={formation} assignments={assignments} players={players}
+              detectedFormation={detectedFormation} highlightSlotId={highlightSlotId}
+              onSlotPointerDown={handleSlotPointerDown} onSlotClick={handleSlotClick}
+              onSlotDoubleClick={handleSlotDoubleClick} pendingAssign={pendingAssignPlayerId != null}
+              fieldRef={fieldRef} roleTags={roleTags}
+            />
+
+            {/* Role picker inline */}
+            {editingRoleSlotId && assignments[editingRoleSlotId] != null && (() => {
+              const slotPlayer = players.find(p => p.id === assignments[editingRoleSlotId]);
+              const slotInfo = formation.slots.find(s => s.id === editingRoleSlotId);
+              return (
+                <div className="mt-2 p-3 rounded-lg bg-surface-2 border border-surface-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-txt-muted">Role for #{slotPlayer?.jerseyNumber} {slotPlayer?.name} ({slotInfo?.label})</span>
+                    <button onClick={() => setEditingRoleSlotId(null)} className="text-xs text-txt-faint hover:text-txt transition-colors">✕</button>
+                  </div>
+                  <RolePicker
+                    value={roleOverrides[editingRoleSlotId] ?? slotPlayer?.roleTag}
+                    onChange={(role) => {
+                      setRoleOverrides(prev => {
+                        const next = { ...prev };
+                        if (role) next[editingRoleSlotId] = role;
+                        else delete next[editingRoleSlotId];
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* BENCH (always visible below field) */}
+          <div ref={benchRef} className="mt-3 bg-surface-1 rounded-lg border border-surface-5 p-3">
+            <h3 className="text-xs font-semibold text-txt-muted mb-2 uppercase tracking-wider">Bench ({bench.length})</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {bench.map(id => {
+                const p = players.find(pl => pl.id === id);
+                return p ? (
+                  <div
+                    key={p.id}
+                    onPointerDown={(e) => startDrag(e, p.id!, 'bench')}
+                    onClick={() => handlePlayerClick(p.id!)}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg select-none transition-colors text-sm ${
+                      (isDragging && dragPlayerId === p.id) ? 'opacity-30' :
+                      pendingAssignPlayerId === p.id ? 'bg-accent/20 border border-accent/40' :
+                      'bg-surface-3 hover:bg-surface-4 cursor-grab'
+                    }`}
+                    style={{ touchAction: 'none' }}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-[10px] font-bold">
+                      {p.jerseyNumber}
+                    </div>
+                    <span className="text-txt text-xs truncate">{p.name.split(' ').pop()}</span>
+                  </div>
+                ) : null;
+              })}
+              {bench.length === 0 && (
+                <p className="text-xs text-txt-faint py-1">Drag players here for the bench</p>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="space-y-1 max-h-48 overflow-y-auto">
-            {bench.map(id => { const p = players.find(pl => pl.id === id); return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null; })}
-            {bench.length === 0 && (<p className="text-xs text-txt-faint text-center py-4">Drag players here</p>)}
+        </div>
+
+        {/* ═══ ROSTER DRAWER ═══ */}
+        {/* Desktop: side panel */}
+        {drawerOpen && (
+          <div ref={rosterRef} className="hidden lg:flex flex-col w-56 shrink-0 bg-surface-1 rounded-lg border border-surface-5 p-3 max-h-[calc(100vh-200px)] sticky top-4">
+            {/* Tabs */}
+            <div className="flex border-b border-surface-5 mb-3 -mx-3 px-3">
+              <button
+                onClick={() => setDrawerTab('roster')}
+                className={`flex-1 pb-2 text-xs font-medium transition-colors ${drawerTab === 'roster' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}
+              >
+                Available ({availablePlayers.length})
+              </button>
+              <button
+                onClick={() => setDrawerTab('details')}
+                className={`flex-1 pb-2 text-xs font-medium transition-colors ${drawerTab === 'details' ? 'text-accent border-b-2 border-accent' : 'text-txt-muted'}`}
+              >
+                Info
+              </button>
+            </div>
+
+            {drawerTab === 'roster' && (
+              <>
+                <Input type="text" placeholder="Search..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-2" />
+                <div className="overflow-y-auto space-y-1 flex-1">
+                  {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
+                  {filteredRoster.length === 0 && (
+                    <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {drawerTab === 'details' && (
+              <div className="overflow-y-auto space-y-3 flex-1 text-xs">
+                <div>
+                  <span className="text-txt-faint">Opponent:</span>
+                  <span className="text-txt ml-1">{opponent || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-txt-faint">Date:</span>
+                  <span className="text-txt ml-1">{matchDate || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-txt-faint">Time:</span>
+                  <span className="text-txt ml-1">{matchTime || '—'}</span>
+                </div>
+                <div>
+                  <span className="text-txt-faint">Location:</span>
+                  <span className="text-txt ml-1">{location || '—'}</span>
+                </div>
+                {opponentTraits.length > 0 && (
+                  <div>
+                    <span className="text-txt-faint block mb-1">Scouting:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {opponentTraits.map(t => (
+                        <span key={t} className="px-1.5 py-0.5 rounded-full text-[10px] bg-accent/10 text-accent border border-accent/20">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
-      </Card>
 
-      {/* Save / Delete */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button onClick={saveLineup} disabled={!opponent || !matchDate || !matchTime} className="w-full sm:w-auto px-6">
-          {selectedMatchId ? 'Save Lineup' : 'Create Match & Save Lineup'}
-        </Button>
-        {selectedMatchId && (
-          <button
-            onClick={deleteMatch}
-            className="text-xs text-txt-faint hover:text-red-400 transition-colors"
-          >
-            Delete Match
-          </button>
+        {/* Mobile: slide-up drawer */}
+        {drawerOpen && (
+          <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-surface-1 border-t border-surface-5 rounded-t-2xl shadow-2xl max-h-[60vh] flex flex-col">
+            {/* Drag handle */}
+            <div className="flex justify-center pt-2 pb-1">
+              <div className="w-10 h-1 rounded-full bg-surface-5" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pb-2 border-b border-surface-5">
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setDrawerTab('roster')}
+                  className={`text-sm font-medium transition-colors ${drawerTab === 'roster' ? 'text-accent' : 'text-txt-muted'}`}
+                >
+                  Available ({availablePlayers.length})
+                </button>
+                <button
+                  onClick={() => setDrawerTab('bench')}
+                  className={`text-sm font-medium transition-colors ${drawerTab === 'bench' ? 'text-accent' : 'text-txt-muted'}`}
+                >
+                  Bench ({bench.length})
+                </button>
+              </div>
+              <button onClick={() => setDrawerOpen(false)} className="text-txt-faint hover:text-txt text-sm p-1">✕</button>
+            </div>
+
+            {/* Content */}
+            <div ref={drawerOpen ? rosterRef : undefined} className="overflow-y-auto flex-1 p-3">
+              {drawerTab === 'roster' && (
+                <>
+                  <Input type="text" placeholder="Search players..." value={rosterFilter} onChange={e => setRosterFilter(e.target.value)} className="mb-2" />
+                  <div className="space-y-1">
+                    {filteredRoster.map(p => (<PlayerCard key={p.id} player={p} origin="roster" />))}
+                    {filteredRoster.length === 0 && (
+                      <p className="text-xs text-txt-faint text-center py-4">{players.length === 0 ? 'Add players in Team tab' : 'All players assigned'}</p>
+                    )}
+                  </div>
+                </>
+              )}
+              {drawerTab === 'bench' && (
+                <div className="space-y-1">
+                  {bench.map(id => {
+                    const p = players.find(pl => pl.id === id);
+                    return p ? <PlayerCard key={p.id} player={p} origin="bench" /> : null;
+                  })}
+                  {bench.length === 0 && (
+                    <p className="text-xs text-txt-faint text-center py-4">Drag players here</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

@@ -16,6 +16,7 @@ function App() {
   const [dayViewOrigin, setDayViewOrigin] = useState<'week' | 'calendar'>('week');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
+  const [lineupMatchId, setLineupMatchId] = useState<number | null>(null);
 
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const teamId = team?.id ?? 0;
@@ -30,6 +31,7 @@ function App() {
     if (matchId) {
       setSelectedMatchId(matchId);
     } else {
+      setLineupMatchId(null);
       setCurrentView('matches');
     }
   };
@@ -103,7 +105,15 @@ function App() {
             />
           )}
           {currentView === 'team' && <TeamSetup />}
-          {currentView === 'matches' && <LineupCreator />}
+          {currentView === 'matches' && (
+            <LineupCreator
+              initialMatchId={lineupMatchId}
+              onBackToMatch={(matchId) => {
+                setSelectedMatchId(matchId);
+                setLineupMatchId(null);
+              }}
+            />
+          )}
           {currentView === 'week' && (
             <WeekView
               teamId={teamId}
@@ -140,6 +150,7 @@ function App() {
           matchId={selectedMatchId}
           onClose={() => setSelectedMatchId(null)}
           onOpenLineup={() => {
+            setLineupMatchId(selectedMatchId);
             setSelectedMatchId(null);
             setCurrentView('matches');
           }}
