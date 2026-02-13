@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { posthog } from '../analytics';
+import { toDateStr, isToday } from '../utils/time';
 import PracticeDetail from './PracticeDetail';
 import Button from './ui/Button';
 
 interface CalendarProps {
   teamId: number;
   onNavigateToDay?: (dateStr: string) => void;
+  onNavigateToMatch?: () => void;
 }
 
-export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
+export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
 
@@ -27,35 +28,11 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  const handleDayClick = (dateStr: string) => {
-    const choice = prompt('Add:\n1 - Game\n2 - Practice\n\nEnter 1 or 2:');
+  const todayStr = toDateStr(new Date());
+  const isCurrentMonth =
+    new Date().getFullYear() === year && new Date().getMonth() === month;
 
-    if (choice === '1') {
-      const opponent = prompt('Opponent name:');
-      const time = prompt('Time (e.g., 14:00):');
-      if (opponent && time) {
-        db.matches.add({
-          teamId,
-          opponent,
-          date: dateStr,
-          time,
-          location: '',
-        }).then(() => posthog.capture('match_created'));
-      }
-    } else if (choice === '2') {
-      const focus = prompt('Session focus (e.g., "Possession"):');
-      const time = prompt('Time (e.g., 16:00):');
-      if (focus && time) {
-        db.practices.add({
-          teamId,
-          focus,
-          date: dateStr,
-          time,
-          status: 'planned',
-        }).then(() => posthog.capture('practice_created'));
-      }
-    }
-  };
+  const goToToday = () => setCurrentDate(new Date());
 
   // Build calendar grid
   const firstDay = new Date(year, month, 1).getDay();
@@ -66,7 +43,7 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
   // Empty cells before month starts
   for (let i = 0; i < firstDay; i++) {
     cells.push(
-      <div key={`empty-${i}`} className="p-2.5 bg-surface-2" />
+      <div key={`empty-${i}`} className="p-2 bg-surface-2 min-h-24" />
     );
   }
 
@@ -75,6 +52,7 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayMatches = matches?.filter(m => m.date === dateStr) || [];
     const dayPractices = practices?.filter(p => p.date === dateStr) || [];
+    const today = isToday(dateStr);
 
     // Combine and sort by time
     const allEvents = [
@@ -85,49 +63,79 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
     cells.push(
       <div
         key={day}
-        onClick={() => handleDayClick(dateStr)}
-        className="p-2 min-h-28 bg-surface-2 hover:bg-surface-3 cursor-pointer transition-colors"
+        className={`p-1.5 min-h-24 cursor-pointer transition-colors ${
+          today ? 'bg-surface-3' : 'bg-surface-2 hover:bg-surface-3/50'
+        }`}
+        onClick={() => onNavigateToDay?.(dateStr)}
       >
-        <div
-          onClick={(e) => { e.stopPropagation(); onNavigateToDay?.(dateStr); }}
-          className="text-xs text-txt-faint mb-1.5 font-medium hover:text-accent cursor-pointer inline-block"
-        >{day}</div>
-            {allEvents.map((event) =>
-             event.type === 'match' ? (
-                 <div
-                      key={`m-${event.data.id}`}
-                      className="text-[11px] bg-accent/5 text-accent px-1.5 py-0.5 mb-1 rounded border border-accent/15"
-                     >
-                      {event.time} - vs {event.data.opponent}
-                 </div>
-                ) : (
-                 <div
-                      key={`p-${event.data.id}`}
-                      onClick={(e) => { e.stopPropagation(); setSelectedPracticeId(event.data.id!); }}
-                      className="text-[11px] bg-surface-3 text-txt-muted px-1.5 py-0.5 mb-1 rounded hover:bg-surface-4 cursor-pointer transition-colors"
-                 >
-                   {event.time} - {event.data.focus}
-                </div>
-             )
-        )}
+        {/* Day number */}
+        <div className={`text-xs font-semibold mb-1 leading-none ${
+          today ? 'text-accent' : 'text-txt-faint'
+        }`}>
+          {today ? (
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-accent text-surface-0 text-[10px]">
+              {day}
+            </span>
+          ) : (
+            day
+          )}
+        </div>
+
+        {/* Event markers */}
+        <div className="space-y-0.5">
+          {allEvents.slice(0, 3).map(event =>
+            event.type === 'match' ? (
+              <div
+                key={`m-${event.data.id}`}
+                onClick={(e) => { e.stopPropagation(); onNavigateToMatch?.(); }}
+                className="text-[10px] leading-tight px-1 py-0.5 rounded bg-accent/10 text-accent truncate cursor-pointer hover:bg-accent/20 transition-colors"
+              >
+                vs {event.data.opponent}
+              </div>
+            ) : (
+              <div
+                key={`p-${event.data.id}`}
+                onClick={(e) => { e.stopPropagation(); setSelectedPracticeId(event.data.id!); }}
+                className="text-[10px] leading-tight px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400/80 truncate cursor-pointer hover:bg-emerald-500/20 transition-colors"
+              >
+                {event.data.focus}
+              </div>
+            )
+          )}
+          {allEvents.length > 3 && (
+            <div className="text-[9px] text-txt-faint pl-1">+{allEvents.length - 3} more</div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month - 1))}>
           &larr; Prev
         </Button>
-        <h2 className="text-lg font-semibold text-txt">
-          {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-txt">
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h2>
+          {!isCurrentMonth && (
+            <button
+              onClick={goToToday}
+              className="px-2.5 py-1 text-xs font-medium text-accent bg-accent/10 hover:bg-accent/20 rounded-md transition-colors"
+            >
+              Today
+            </button>
+          )}
+        </div>
         <Button variant="secondary" onClick={() => setCurrentDate(new Date(year, month + 1))}>
           Next &rarr;
         </Button>
       </div>
 
+      {/* Calendar grid */}
       <div className="overflow-x-auto">
         <div className="grid grid-cols-7 gap-px bg-surface-5 rounded-lg overflow-hidden border border-surface-5 min-w-[600px]">
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
@@ -142,6 +150,19 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex gap-4 mt-3 text-[10px] text-txt-faint">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-sm bg-accent/40" />
+          Match
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-sm bg-emerald-500/40" />
+          Practice
+        </div>
+      </div>
+
+      {/* PracticeDetail modal */}
       {selectedPracticeId !== null && (
         <PracticeDetail
           practiceId={selectedPracticeId}

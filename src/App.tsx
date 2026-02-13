@@ -10,12 +10,14 @@ import SeasonOverview from './components/SeasonOverview';
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dayViewOrigin, setDayViewOrigin] = useState<'week' | 'calendar'>('week');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const teamId = 1;
 
-  const navigateToDay = (dateStr: string) => {
+  const navigateToDay = (dateStr: string, from?: 'week' | 'calendar') => {
     setSelectedDate(dateStr);
+    setDayViewOrigin(from ?? 'week');
     setCurrentView('day');
   };
 
@@ -23,8 +25,11 @@ function App() {
     setCurrentView('matches');
   };
 
-  const navItem = (view: string, label: string, alsoActive?: string) => {
-    const active = currentView === view || currentView === alsoActive;
+  const isDayFromWeek = currentView === 'day' && dayViewOrigin === 'week';
+  const isDayFromCalendar = currentView === 'day' && dayViewOrigin === 'calendar';
+
+  const navItem = (view: string, label: string, alsoActive?: boolean) => {
+    const active = currentView === view || alsoActive === true;
     return (
       <button
         onClick={() => { setCurrentView(view); setMobileNavOpen(false); }}
@@ -59,8 +64,8 @@ function App() {
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
-            {navItem('week', 'Week', 'day')}
-            {navItem('calendar', 'Calendar')}
+            {navItem('week', 'Week', isDayFromWeek)}
+            {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
           </nav>
         )}
@@ -72,8 +77,8 @@ function App() {
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
-            {navItem('week', 'Week', 'day')}
-            {navItem('calendar', 'Calendar')}
+            {navItem('week', 'Week', isDayFromWeek)}
+            {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('season', 'Season')}
           </nav>
         </aside>
@@ -100,14 +105,16 @@ function App() {
           {currentView === 'calendar' && (
             <Calendar
               teamId={teamId}
-              onNavigateToDay={navigateToDay}
+              onNavigateToDay={(dateStr) => navigateToDay(dateStr, 'calendar')}
+              onNavigateToMatch={navigateToMatch}
             />
           )}
           {currentView === 'day' && selectedDate && (
             <DayView
               teamId={teamId}
               dateStr={selectedDate}
-              onBack={() => setCurrentView('week')}
+              onBack={() => setCurrentView(dayViewOrigin)}
+              backLabel={dayViewOrigin === 'calendar' ? 'Back to Calendar' : 'Back to Week'}
               onNavigateToMatch={navigateToMatch}
               onDateChange={(dateStr) => setSelectedDate(dateStr)}
             />

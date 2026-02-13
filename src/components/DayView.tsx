@@ -11,11 +11,12 @@ interface DayViewProps {
   teamId: number;
   dateStr: string;
   onBack: () => void;
+  backLabel?: string;
   onNavigateToMatch: () => void;
   onDateChange: (dateStr: string) => void;
 }
 
-export default function DayView({ teamId, dateStr, onBack, onNavigateToMatch, onDateChange }: DayViewProps) {
+export default function DayView({ teamId, dateStr, onBack, backLabel, onNavigateToMatch, onDateChange }: DayViewProps) {
   const [selectedPracticeId, setSelectedPracticeId] = useState<number | null>(null);
 
   const formattedDate = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
@@ -46,7 +47,7 @@ export default function DayView({ teamId, dateStr, onBack, onNavigateToMatch, on
           onClick={onBack}
           className="text-sm text-txt-muted hover:text-txt transition-colors"
         >
-          &larr; Back to Week
+          &larr; {backLabel ?? 'Back to Week'}
         </button>
         <div className="flex items-center gap-1">
           <Button variant="secondary" onClick={() => onDateChange(shiftDate(dateStr, -1))}>
