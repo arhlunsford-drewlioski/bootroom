@@ -133,7 +133,12 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
                     )
                   )}
                   {allEvents.length === 0 && (
-                    <div className="text-[11px] text-txt-faint/50 text-center pt-4">No events</div>
+                    <button
+                      onClick={() => setAddDate(dateStr)}
+                      className="w-full text-[11px] text-txt-faint/50 text-center pt-4 pb-2 hover:text-accent transition-colors cursor-pointer"
+                    >
+                      + Add event
+                    </button>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); setAddDate(dateStr); }}

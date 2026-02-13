@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/database';
+import { initTheme, applyTeamColors } from './utils/theme';
 import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
 import MatchesList from './components/MatchesList';
@@ -11,6 +12,8 @@ import SeasonOverview from './components/SeasonOverview';
 import MatchDetail from './components/MatchDetail';
 import Settings from './components/Settings';
 
+// Apply theme immediately on module load (before first render)
+initTheme();
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -21,6 +24,11 @@ function App() {
 
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const teamId = team?.id ?? 0;
+
+  // Apply team accent colors whenever the active team changes
+  useEffect(() => {
+    applyTeamColors(team?.primaryColor, team?.secondaryColor);
+  }, [team?.primaryColor, team?.secondaryColor]);
 
   const navigateToDay = (dateStr: string) => {
     setSelectedDate(dateStr);
@@ -58,10 +66,9 @@ function App() {
       <div className="flex flex-col md:flex-row">
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between bg-surface-1 border-b border-surface-5 px-4 py-3 sticky top-0 z-40">
-          <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">BOOTROOM</h1>
           <button
             onClick={() => setMobileNavOpen(!mobileNavOpen)}
-            className="text-txt-muted hover:text-txt p-2"
+            className="text-txt-muted hover:text-txt p-2 -ml-2"
             aria-label="Toggle navigation"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -71,6 +78,9 @@ function App() {
               }
             </svg>
           </button>
+          <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">BOOTROOM</h1>
+          {/* Spacer to keep logo roughly centered */}
+          <div className="w-[38px]" />
         </div>
 
         {/* Mobile nav overlay */}
@@ -95,10 +105,10 @@ function App() {
             </h1>
             <div className="space-y-1 flex-1">
               {navItem('dashboard', 'Dashboard')}
+              {navItem('team', 'Team')}
               {navItem('calendar', 'Calendar', isDayFromCalendar)}
               {navItem('matches', 'Matches')}
               {navItem('lineups', 'Lineups')}
-              {navItem('team', 'Team')}
               {navItem('season', 'Season')}
               <div className="border-t border-surface-5 mt-2 pt-2">
                 {navItem('settings', 'Settings')}
@@ -112,10 +122,10 @@ function App() {
           <h1 onClick={() => setCurrentView('dashboard')} className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer">BOOTROOM</h1>
           <nav className="space-y-1">
             {navItem('dashboard', 'Dashboard')}
+            {navItem('team', 'Team')}
             {navItem('calendar', 'Calendar', isDayFromCalendar)}
             {navItem('matches', 'Matches')}
             {navItem('lineups', 'Lineups')}
-            {navItem('team', 'Team')}
             {navItem('season', 'Season')}
             <div className="border-t border-surface-5 mt-2 pt-2">
               {navItem('settings', 'Settings')}

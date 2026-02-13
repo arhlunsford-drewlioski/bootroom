@@ -2,10 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS — CSS Custom Properties
+   Values stored as R G B channels for Tailwind
+   opacity modifier support (e.g. bg-accent/20).
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* ── Light theme (default) ── */
+  --surface-0: 245 246 248;
+  --surface-1: 255 255 255;
+  --surface-2: 240 241 244;
+  --surface-3: 228 230 235;
+  --surface-4: 209 213 222;
+  --surface-5: 192 197 209;
+  --txt: 26 29 35;
+  --txt-muted: 90 97 117;
+  --txt-faint: 139 146 165;
+  --field-green: #15803d;
+
+  /* Accent tokens (overridden by team colors when active) */
+  --accent: 26 86 219;
+  --accent-dark: 22 72 184;
+  --accent-2: 26 86 219;
+}
+
+[data-theme="dark"] {
+  /* ── Dark / FM-style theme ── */
+  --surface-0: 12 20 33;
+  --surface-1: 20 30 48;
+  --surface-2: 26 39 64;
+  --surface-3: 36 51 82;
+  --surface-4: 46 64 101;
+  --surface-5: 59 79 120;
+  --txt: 226 232 240;
+  --txt-muted: 136 153 176;
+  --txt-faint: 80 101 128;
+
+  --accent: 255 46 99;
+  --accent-dark: 224 38 79;
+  --accent-2: 255 46 99;
+}
+
+/* ═══════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════ */
+
 body {
   margin: 0;
-  background-color: #0c1421;
-  color: #e2e8f0;
+  background-color: rgb(var(--surface-0));
+  color: rgb(var(--txt));
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -17,14 +63,18 @@ body {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
-/* Force dark backgrounds on select options (browser defaults to white) */
+/* Force themed backgrounds on select options */
 select option {
-  background-color: #1a2740;
-  color: #e2e8f0;
+  background-color: rgb(var(--surface-2));
+  color: rgb(var(--txt));
 }
 
 /* Style date/time input pickers */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.3);
+}
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
 }

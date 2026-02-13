@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { Player } from '../db/database';
 import type { FormationTemplate } from './formations';
 
@@ -15,6 +16,24 @@ interface SoccerFieldProps {
   roleTags?: Record<string, string>;
 }
 
+/** Read the current --accent RGB channels and return a usable color string */
+function getAccentColor(): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  if (!raw) return '#1a56db';
+  // CSS var stores "R G B" channels
+  const parts = raw.split(/\s+/);
+  if (parts.length === 3) return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+  return raw;
+}
+
+function getAccent2Color(): string {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim();
+  if (!raw) return getAccentColor();
+  const parts = raw.split(/\s+/);
+  if (parts.length === 3) return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+  return raw;
+}
+
 export default function SoccerField({
   formation,
   assignments,
@@ -28,6 +47,13 @@ export default function SoccerField({
   fieldRef,
   roleTags,
 }: SoccerFieldProps) {
+  // Read accent colors from CSS variables
+  const accent = useMemo(getAccentColor, []);
+  const accent2 = useMemo(getAccent2Color, []);
+  // Use accent2 (secondary) for jersey fill, accent (primary) for outlines/labels
+  const jerseyFill = accent;
+  const outlineColor = accent2;
+
   return (
     <svg
       ref={fieldRef}
@@ -36,7 +62,7 @@ export default function SoccerField({
       style={{ touchAction: 'none' }}
     >
       {/* Field background */}
-      <rect x="0" y="0" width="100" height="100" fill="#15803d" />
+      <rect x="0" y="0" width="100" height="100" fill="var(--field-green)" />
 
       {/* Field outline */}
       <rect x="1" y="1" width="98" height="98" fill="none" stroke="white" strokeWidth="0.5" strokeOpacity="0.6" />
@@ -69,7 +95,7 @@ export default function SoccerField({
         <text
           x="50" y="4"
           textAnchor="middle"
-          fill="#FF2E63"
+          fill={accent}
           fontSize="3.5"
           fontWeight="bold"
           fontFamily="system-ui, sans-serif"
@@ -99,7 +125,7 @@ export default function SoccerField({
           >
             {/* Highlight ring */}
             {(isHighlighted || isAssignTarget) && (
-              <circle cx={svgX} cy={svgY} r="5.8" fill="none" stroke="#FF2E63" strokeWidth="0.6" opacity="0.8">
+              <circle cx={svgX} cy={svgY} r="5.8" fill="none" stroke={outlineColor} strokeWidth="0.6" opacity="0.8">
                 <animate attributeName="opacity" values="0.4;0.9;0.4" dur="1.2s" repeatCount="indefinite" />
               </circle>
             )}
@@ -109,7 +135,7 @@ export default function SoccerField({
               cx={svgX}
               cy={svgY}
               r="4.5"
-              fill={isFilled ? '#FF2E63' : 'rgba(255,255,255,0.1)'}
+              fill={isFilled ? jerseyFill : 'rgba(255,255,255,0.1)'}
               stroke={isFilled ? 'white' : 'rgba(255,255,255,0.3)'}
               strokeWidth={isFilled ? '0.5' : '0.3'}
               strokeDasharray={isFilled ? 'none' : '1.5 1'}
@@ -120,7 +146,7 @@ export default function SoccerField({
               x={svgX}
               y={svgY + 1.5}
               textAnchor="middle"
-              fill={isFilled ? '#141e30' : 'rgba(255,255,255,0.5)'}
+              fill={isFilled ? 'white' : 'rgba(255,255,255,0.5)'}
               fontSize={isFilled ? '3.5' : '2.5'}
               fontWeight="bold"
               fontFamily="system-ui, sans-serif"
@@ -146,7 +172,7 @@ export default function SoccerField({
                 x={svgX}
                 y={svgY + 9.5}
                 textAnchor="middle"
-                fill="#FF2E63"
+                fill={outlineColor}
                 fontSize="1.6"
                 fontFamily="system-ui, sans-serif"
                 opacity="0.8"

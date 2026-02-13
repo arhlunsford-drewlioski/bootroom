@@ -90,8 +90,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   // Highlight
   const [highlightSlotId, setHighlightSlotId] = useState<string | null>(null);
 
-  // Drawer state
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  // Drawer state (open by default so roster is visible)
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [drawerTab, setDrawerTab] = useState<'roster' | 'bench' | 'details'>('roster');
 
   // Match details expanded (desktop inline)

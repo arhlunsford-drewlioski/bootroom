@@ -43,8 +43,13 @@ export async function exportLineupPng({
   ctx.lineTo(W, HEADER_H - 0.5);
   ctx.stroke();
 
-  // Opponent text
-  ctx.fillStyle = '#FF2E63';
+  // Opponent text (use team accent color)
+  const accentRaw = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const accentParts = accentRaw.split(/\s+/);
+  const accentHex = accentParts.length === 3
+    ? `rgb(${accentParts[0]}, ${accentParts[1]}, ${accentParts[2]})`
+    : '#FF2E63';
+  ctx.fillStyle = accentHex;
   ctx.font = 'bold 22px "Bebas Neue", system-ui, sans-serif';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';

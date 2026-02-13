@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { db } from '../db/database';
 import type { Team, Player, GameFormat } from '../db/database';
+import { applyTeamColors } from '../utils/theme';
 import Input from './ui/Input';
 import Select from './ui/Select';
 import Button from './ui/Button';
 import Card from './ui/Card';
 import RolePicker from './ui/RolePicker';
 import ConfirmDialog from './ui/ConfirmDialog';
+
+const TEAM_COLOR_PRESETS = [
+  '#1a56db', '#2563eb', '#0891b2', '#059669', '#15803d',
+  '#ca8a04', '#ea580c', '#dc2626', '#e11d48', '#9333ea',
+  '#7c3aed', '#1e3a5f', '#0f172a', '#ffffff',
+];
 
 export default function TeamSetup() {
   const [team, setTeam] = useState<Team | null>(null);
@@ -16,6 +23,8 @@ export default function TeamSetup() {
   const [playerName, setPlayerName] = useState('');
   const [jerseyNumber, setJerseyNumber] = useState('');
   const [newPlayerRole, setNewPlayerRole] = useState<string | undefined>();
+  const [primaryColor, setPrimaryColor] = useState<string>('');
+  const [secondaryColor, setSecondaryColor] = useState<string>('');
   const [deletePlayerId, setDeletePlayerId] = useState<number | null>(null);
   const [showDeleteTeamConfirm, setShowDeleteTeamConfirm] = useState(false);
 
@@ -27,6 +36,8 @@ export default function TeamSetup() {
     const teams = await db.teams.toArray();
     if (teams.length > 0) {
       setTeam(teams[0]);
+      setPrimaryColor(teams[0].primaryColor ?? '');
+      setSecondaryColor(teams[0].secondaryColor ?? '');
       const teamPlayers = await db.players.where('teamId').equals(teams[0].id!).toArray();
       setPlayers(teamPlayers);
     }
@@ -71,6 +82,18 @@ export default function TeamSetup() {
     await db.players.delete(deletePlayerId);
     setDeletePlayerId(null);
     loadTeam();
+  }
+
+  async function saveTeamColor(field: 'primaryColor' | 'secondaryColor', color: string | undefined) {
+    if (!team?.id) return;
+    await db.teams.update(team.id, { [field]: color });
+    const updated = await db.teams.get(team.id);
+    if (updated) {
+      setTeam(updated);
+      setPrimaryColor(updated.primaryColor ?? '');
+      setSecondaryColor(updated.secondaryColor ?? '');
+      applyTeamColors(updated.primaryColor, updated.secondaryColor);
+    }
   }
 
   function deleteTeam() {
@@ -127,6 +150,82 @@ export default function TeamSetup() {
           {team.gameFormat ?? '11v11'}
         </span>
       </div>
+
+      {/* Team Colors */}
+      <Card className="mb-4">
+        <h3 className="text-sm font-semibold text-txt mb-3">Team Colors</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-txt-muted mb-1.5">Primary Color</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TEAM_COLOR_PRESETS.map(c => (
+                <button
+                  key={`p-${c}`}
+                  type="button"
+                  onClick={() => saveTeamColor('primaryColor', c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${
+                    primaryColor === c ? 'border-txt scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+              {primaryColor && (
+                <button
+                  type="button"
+                  onClick={() => saveTeamColor('primaryColor', undefined)}
+                  className="w-7 h-7 rounded-full border border-surface-5 text-txt-faint text-xs flex items-center justify-center hover:border-txt-muted transition-colors"
+                  title="Reset"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-txt-muted mb-1.5">Secondary Color</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TEAM_COLOR_PRESETS.map(c => (
+                <button
+                  key={`s-${c}`}
+                  type="button"
+                  onClick={() => saveTeamColor('secondaryColor', c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${
+                    secondaryColor === c ? 'border-txt scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+              {secondaryColor && (
+                <button
+                  type="button"
+                  onClick={() => saveTeamColor('secondaryColor', undefined)}
+                  className="w-7 h-7 rounded-full border border-surface-5 text-txt-faint text-xs flex items-center justify-center hover:border-txt-muted transition-colors"
+                  title="Reset"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        {(primaryColor || secondaryColor) && (
+          <div className="flex items-center gap-3 mt-3 pt-3 border-t border-surface-5">
+            <span className="text-xs text-txt-faint">Preview:</span>
+            <div className="flex items-center gap-1.5">
+              {primaryColor && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: primaryColor }}>
+                  Primary
+                </span>
+              )}
+              {secondaryColor && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white" style={{ backgroundColor: secondaryColor }}>
+                  Secondary
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Add Player */}

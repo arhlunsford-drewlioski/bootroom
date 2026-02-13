@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { exportBackup, importBackup } from '../utils/backup';
+import { getStoredTheme, setTheme, type ThemeMode } from '../utils/theme';
 import Button from './ui/Button';
 import Card from './ui/Card';
 
@@ -9,6 +10,14 @@ export default function Settings() {
   const [importStatus, setImportStatus] = useState<'idle' | 'confirming' | 'importing' | 'done' | 'error'>('idle');
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getStoredTheme);
+
+  const toggleTheme = () => {
+    const next = themeMode === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    setThemeMode(next);
+  };
 
   const handleExport = async () => {
     try {
@@ -51,6 +60,31 @@ export default function Settings() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-txt font-display tracking-wider">SETTINGS</h2>
+
+      {/* Theme */}
+      <Card>
+        <h3 className="text-sm font-semibold text-txt-muted uppercase tracking-wider mb-2">Appearance</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-txt">Theme</p>
+            <p className="text-xs text-txt-faint mt-0.5">
+              {themeMode === 'light' ? 'Light mode' : 'Dark mode (FM-style)'}
+            </p>
+          </div>
+          <button
+            onClick={toggleTheme}
+            className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors bg-surface-3"
+            role="switch"
+            aria-checked={themeMode === 'dark'}
+          >
+            <span
+              className={`inline-block h-5 w-5 rounded-full bg-accent transition-transform ${
+                themeMode === 'dark' ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </Card>
 
       {/* Backup */}
       <Card>

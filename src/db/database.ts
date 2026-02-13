@@ -6,6 +6,8 @@ export interface Team {
   id?: number;
   name: string;
   gameFormat: GameFormat;
+  primaryColor?: string;
+  secondaryColor?: string;
   createdAt: Date;
 }
 
@@ -136,6 +138,16 @@ class BootroomDatabase extends Dexie {
       });
     });
     this.version(3).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId'
+    });
+    // v4: adds optional primaryColor/secondaryColor to teams (no index changes)
+    this.version(4).stores({
       teams: '++id, name',
       players: '++id, teamId, jerseyNumber',
       matches: '++id, teamId, date',
