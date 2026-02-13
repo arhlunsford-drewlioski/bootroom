@@ -9,7 +9,7 @@ import { toDateStr, computeEndTime } from '../utils/time';
 
 interface DashboardProps {
   teamId: number;
-  onNavigateToMatch: () => void;
+  onNavigateToMatch: (matchId?: number) => void;
   onNavigateToDay: (dateStr: string) => void;
   onAddMatch: () => void;
   onAddPractice: () => void;
@@ -105,7 +105,7 @@ export default function Dashboard({
                   <MatchRow
                     key={`m-${event.data.id}`}
                     match={event.data as Match}
-                    onClick={onNavigateToMatch}
+                    onClick={() => onNavigateToMatch(event.data.id!)}
                   />
                 ) : (
                   <PracticeRow
@@ -136,7 +136,7 @@ export default function Dashboard({
                 <Card
                   key={`m-${event.data.id}`}
                   className="p-3 cursor-pointer hover:bg-surface-2 transition-colors"
-                  onClick={onNavigateToMatch}
+                  onClick={() => onNavigateToMatch((event.data as Match).id!)}
                 >
                   <MatchRow
                     match={event.data as Match}

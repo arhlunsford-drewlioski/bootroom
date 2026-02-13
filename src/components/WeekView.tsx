@@ -10,7 +10,7 @@ import { computeEndTime, getWeekDates, getWeekLabel, toDateStr, isToday } from '
 interface WeekViewProps {
   teamId: number;
   onNavigateToDay: (dateStr: string) => void;
-  onNavigateToMatch: () => void;
+  onNavigateToMatch: (matchId?: number) => void;
 }
 
 export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }: WeekViewProps) {
@@ -126,7 +126,7 @@ export default function WeekView({ teamId, onNavigateToDay, onNavigateToMatch }:
                       <MatchCard
                         key={`m-${event.data.id}`}
                         match={event.data as Match}
-                        onClick={onNavigateToMatch}
+                        onClick={() => onNavigateToMatch((event.data as Match).id!)}
                       />
                     )
                   )}

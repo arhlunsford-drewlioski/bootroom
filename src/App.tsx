@@ -8,12 +8,14 @@ import WeekView from './components/WeekView';
 import Calendar from './components/calendar';
 import DayView from './components/DayView';
 import SeasonOverview from './components/SeasonOverview';
+import MatchDetail from './components/MatchDetail';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayViewOrigin, setDayViewOrigin] = useState<'week' | 'calendar'>('week');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
 
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const teamId = team?.id ?? 0;
@@ -24,8 +26,12 @@ function App() {
     setCurrentView('day');
   };
 
-  const navigateToMatch = () => {
-    setCurrentView('matches');
+  const navigateToMatch = (matchId?: number) => {
+    if (matchId) {
+      setSelectedMatchId(matchId);
+    } else {
+      setCurrentView('matches');
+    }
   };
 
   const isDayFromWeek = currentView === 'day' && dayViewOrigin === 'week';
@@ -127,6 +133,18 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* MatchDetail modal */}
+      {selectedMatchId !== null && (
+        <MatchDetail
+          matchId={selectedMatchId}
+          onClose={() => setSelectedMatchId(null)}
+          onOpenLineup={() => {
+            setSelectedMatchId(null);
+            setCurrentView('matches');
+          }}
+        />
+      )}
     </div>
   );
 }

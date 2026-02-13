@@ -12,7 +12,7 @@ interface DayViewProps {
   dateStr: string;
   onBack: () => void;
   backLabel?: string;
-  onNavigateToMatch: () => void;
+  onNavigateToMatch: (matchId?: number) => void;
   onDateChange: (dateStr: string) => void;
 }
 
@@ -86,7 +86,7 @@ export default function DayView({ teamId, dateStr, onBack, backLabel, onNavigate
               <DayMatchCard
                 key={match.id}
                 match={match}
-                onViewLineup={onNavigateToMatch}
+                onViewMatch={() => onNavigateToMatch(match.id!)}
               />
             ))}
           </div>
@@ -180,9 +180,9 @@ function DayPracticeCard({ practice, onEdit }: { practice: Practice; onEdit: () 
   );
 }
 
-function DayMatchCard({ match, onViewLineup }: { match: Match; onViewLineup: () => void }) {
+function DayMatchCard({ match, onViewMatch }: { match: Match; onViewMatch: () => void }) {
   return (
-    <div className="rounded-lg border border-accent/20 bg-surface-1 p-4">
+    <div className="rounded-lg border border-accent/20 bg-surface-1 p-4 cursor-pointer hover:bg-surface-2 transition-colors" onClick={onViewMatch}>
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs text-txt-faint">{match.time}</div>
@@ -224,12 +224,9 @@ function DayMatchCard({ match, onViewLineup }: { match: Match; onViewLineup: () 
         </div>
       )}
 
-      <button
-        onClick={onViewLineup}
-        className="mt-3 text-xs text-accent hover:text-accent-dark transition-colors"
-      >
-        View Lineup &rarr;
-      </button>
+      <span className="mt-3 inline-block text-xs text-accent">
+        View Match &rarr;
+      </span>
     </div>
   );
 }

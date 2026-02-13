@@ -9,7 +9,7 @@ import Button from './ui/Button';
 interface CalendarProps {
   teamId: number;
   onNavigateToDay?: (dateStr: string) => void;
-  onNavigateToMatch?: () => void;
+  onNavigateToMatch?: (matchId?: number) => void;
 }
 
 /* ── tiny popover that appears on day-cell click ── */
@@ -175,7 +175,7 @@ export default function Calendar({ teamId, onNavigateToDay, onNavigateToMatch }:
             event.type === 'match' ? (
               <div
                 key={`m-${event.data.id}`}
-                onClick={(e) => { e.stopPropagation(); onNavigateToMatch?.(); }}
+                onClick={(e) => { e.stopPropagation(); onNavigateToMatch?.(event.data.id!); }}
                 className="text-[10px] leading-tight px-1 py-0.5 rounded bg-accent/10 text-accent truncate cursor-pointer hover:bg-accent/20 transition-colors"
               >
                 vs {event.data.opponent}

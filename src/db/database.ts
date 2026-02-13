@@ -35,6 +35,9 @@ export interface Match {
   bench?: number[];
   formation?: string;
   result?: string;
+  goalsFor?: number;
+  goalsAgainst?: number;
+  completed?: boolean;
   reflection?: string;
   notes?: string;
   opponentTraits?: string[];
