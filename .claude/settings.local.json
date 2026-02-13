@@ -9,7 +9,8 @@
       "Bash(npm run build:*)",
       "Bash(ls:*)",
       "Bash(del C:UsersarhluDesktopbootroomsrccomponentsMatchPlanner.tsx)",
-      "WebFetch(domain:www.cufonfonts.com)"
+      "WebFetch(domain:www.cufonfonts.com)",
+      "Bash(npm install:*)"
     ]
   }
 }

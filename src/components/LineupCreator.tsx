@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Player, LineupEntry } from '../db/database';
+import { posthog } from '../analytics';
 import SoccerField from './SoccerField';
 import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT, getDetectionThreshold, getFormation, detectFormation } from './formations';
 import type { PositionSlot } from './formations';
@@ -144,6 +145,7 @@ export default function LineupCreator() {
     }
     const match = matches.find(m => m.id === matchId);
     if (!match) return;
+    posthog.capture('match_opened');
     setOpponent(match.opponent);
     const rawDate = match.date as unknown;
     setMatchDate(rawDate instanceof Date ? rawDate.toISOString().slice(0, 10) : String(match.date));
@@ -207,6 +209,7 @@ export default function LineupCreator() {
         lineup: lineupEntries, bench, formation: detected || formationId,
         opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
       });
+      posthog.capture('lineup_saved');
     } else {
       if (!opponent || !matchDate || !matchTime) return;
       const id = await db.matches.add({
@@ -216,6 +219,8 @@ export default function LineupCreator() {
         opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
       });
       setSelectedMatchId(id as number);
+      posthog.capture('match_created');
+      posthog.capture('lineup_saved');
     }
   }
 

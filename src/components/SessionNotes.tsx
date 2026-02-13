@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SessionNote } from '../db/database';
+import { posthog } from '../analytics';
 import { TACTICAL_TAGS } from '../constants/tags';
 import Input from './ui/Input';
 
@@ -36,6 +37,7 @@ export default function SessionNotes({ notes, onChange, sessionStartTime }: Sess
       tags: tags && tags.length > 0 ? tags : undefined,
     };
     onChange([...notes, newNote]);
+    posthog.capture('note_added');
     setNoteText('');
   }
 

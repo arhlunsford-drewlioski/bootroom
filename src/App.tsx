@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
 import LineupCreator from './components/LineupCreator';
 import WeekView from './components/WeekView';
@@ -7,7 +8,7 @@ import DayView from './components/DayView';
 import SeasonOverview from './components/SeasonOverview';
 
 function App() {
-  const [currentView, setCurrentView] = useState('team');
+  const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -55,6 +56,7 @@ function App() {
         {/* Mobile nav dropdown */}
         {mobileNavOpen && (
           <nav className="md:hidden bg-surface-1 border-b border-surface-5 px-4 pb-3 space-y-1">
+            {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
             {navItem('week', 'Week', 'day')}
@@ -67,6 +69,7 @@ function App() {
         <aside className="hidden md:block w-52 shrink-0 bg-surface-1 min-h-screen border-r border-surface-5 p-4">
           <h1 className="text-3xl font-bold text-accent tracking-wider mb-6 font-display">BOOTROOM</h1>
           <nav className="space-y-1">
+            {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}
             {navItem('matches', 'Matches')}
             {navItem('week', 'Week', 'day')}
@@ -76,6 +79,15 @@ function App() {
         </aside>
 
         <main className="flex-1 p-4 md:p-6 min-w-0">
+          {currentView === 'dashboard' && (
+            <Dashboard
+              teamId={teamId}
+              onNavigateToMatch={navigateToMatch}
+              onNavigateToDay={navigateToDay}
+              onAddMatch={() => setCurrentView('matches')}
+              onAddPractice={() => setCurrentView('calendar')}
+            />
+          )}
           {currentView === 'team' && <TeamSetup />}
           {currentView === 'matches' && <LineupCreator />}
           {currentView === 'week' && (

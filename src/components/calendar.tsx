@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
+import { posthog } from '../analytics';
 import PracticeDetail from './PracticeDetail';
 import Button from './ui/Button';
 
@@ -39,7 +40,7 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
           date: dateStr,
           time,
           location: '',
-        });
+        }).then(() => posthog.capture('match_created'));
       }
     } else if (choice === '2') {
       const focus = prompt('Session focus (e.g., "Possession"):');
@@ -51,7 +52,7 @@ export default function Calendar({ teamId, onNavigateToDay }: CalendarProps) {
           date: dateStr,
           time,
           status: 'planned',
-        });
+        }).then(() => posthog.capture('practice_created'));
       }
     }
   };
