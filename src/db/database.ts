@@ -326,3 +326,9 @@ class BootroomDatabase extends Dexie {
 }
 
 export const db = new BootroomDatabase();
+
+// Expose db globally for debugging in development
+if (import.meta.env.DEV) {
+  (window as any).db = db;
+  console.log('✅ Database exposed to window.db for debugging');
+}
