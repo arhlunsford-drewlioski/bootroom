@@ -162,23 +162,33 @@ function StatsTab({ player }: { player: Player }) {
   }, [allStats]);
 
   const handleSave = async () => {
+    if (!statForm.date) return;
     setSaving(true);
     try {
       const payload: PlayerStats = {
-        ...(statForm as PlayerStats),
         playerId: player.id!,
         teamId: player.teamId,
-        date: statForm.date || new Date().toISOString().slice(0, 10),
+        date: statForm.date,
+        minutesPlayed: statForm.minutesPlayed,
+        goals: statForm.goals,
+        assists: statForm.assists,
+        yellowCards: statForm.yellowCards,
+        redCards: statForm.redCards,
+        attended: statForm.attended,
+        saves: statForm.saves,
+        cleanSheets: statForm.cleanSheets,
+        penaltiesSaved: statForm.penaltiesSaved,
       };
       if (editingId != null) {
         await db.playerStats.update(editingId, payload);
       } else {
-        delete payload.id;
         await db.playerStats.add(payload);
       }
       setStatForm({});
       setShowAddStat(false);
       setEditingId(null);
+    } catch (err) {
+      console.error('Failed to save player stats:', err);
     } finally {
       setSaving(false);
     }
@@ -444,8 +454,9 @@ function EvalTab({ player }: { player: Player }) {
     setSaving(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
+      const { id: _id, ...fields } = form;
       const payload: PlayerEvaluation = {
-        ...(form as PlayerEvaluation),
+        ...fields as PlayerEvaluation,
         playerId: player.id!,
         teamId: player.teamId,
         date: today,
@@ -453,11 +464,12 @@ function EvalTab({ player }: { player: Player }) {
       if (latestEval && latestEval.date === today) {
         await db.playerEvaluations.update(latestEval.id!, payload);
       } else {
-        delete payload.id;
         await db.playerEvaluations.add(payload);
       }
       setFlash('Saved');
       setTimeout(() => setFlash(null), 1500);
+    } catch (err) {
+      console.error('Failed to save evaluation:', err);
     } finally {
       setSaving(false);
     }
@@ -678,22 +690,22 @@ export default function PlayerCard({ player, onDelete }: PlayerCardProps) {
         {hasAnyRating && (
           <div className="hidden sm:flex items-center gap-1.5">
             {techAvg && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/15 text-blue-400 border border-blue-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-clr-info/15 text-clr-info border border-clr-info/20">
                 TEC {techAvg}
               </span>
             )}
             {tacAvg && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-clr-success/15 text-clr-success border border-clr-success/20">
                 TAC {tacAvg}
               </span>
             )}
             {psyAvg && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-clr-purple/15 text-clr-purple border border-clr-purple/20">
                 PSY {psyAvg}
               </span>
             )}
             {physAvg && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-clr-warning/15 text-clr-warning border border-clr-warning/20">
                 PHY {physAvg}
               </span>
             )}

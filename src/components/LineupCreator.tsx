@@ -534,16 +534,16 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
             ? 'opacity-30'
             : isPending
               ? 'bg-accent/20 border border-accent/40 ring-1 ring-accent/30'
-              : 'bg-surface-3 hover:bg-surface-4 cursor-grab active:cursor-grabbing'
+              : 'bg-surface-2 border border-surface-5 hover:bg-surface-3 cursor-grab active:cursor-grabbing'
         }`}
         style={{ touchAction: 'none' }}
       >
-        <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-xs font-bold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-accent text-surface-0 flex items-center justify-center text-xs font-bold shrink-0">
           {player.jerseyNumber}
         </div>
-        <span className="text-sm text-txt truncate">{player.name}</span>
+        <span className="text-sm font-medium text-txt truncate">{player.name}</span>
         {player.roleTag && (
-          <span className="ml-auto text-[10px] text-accent/70 truncate">{player.roleTag}</span>
+          <span className="ml-auto text-[10px] font-medium text-txt-muted truncate">{player.roleTag}</span>
         )}
       </div>
     );
@@ -873,14 +873,14 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
                     className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg select-none transition-colors text-sm ${
                       (isDragging && dragPlayerId === p.id) ? 'opacity-30' :
                       pendingAssignPlayerId === p.id ? 'bg-accent/20 border border-accent/40' :
-                      'bg-surface-3 hover:bg-surface-4 cursor-grab'
+                      'bg-surface-2 border border-surface-5 hover:bg-surface-3 cursor-grab'
                     }`}
                     style={{ touchAction: 'none' }}
                   >
-                    <div className="w-6 h-6 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-[10px] font-bold">
+                    <div className="w-6 h-6 rounded-full bg-accent text-surface-0 flex items-center justify-center text-[10px] font-bold">
                       {p.jerseyNumber}
                     </div>
-                    <span className="text-txt text-xs truncate">{p.name.split(' ').pop()}</span>
+                    <span className="text-txt text-xs font-medium truncate">{p.name.split(' ').pop()}</span>
                   </div>
                 ) : null;
               })}

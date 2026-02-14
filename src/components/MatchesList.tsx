@@ -128,10 +128,10 @@ export default function MatchesList({ teamId, onSelectMatch }: MatchesListProps)
     if (!match.result) return null;
     const outcome = match.result.split(' ').pop();
     const color = outcome === 'W'
-      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+      ? 'bg-clr-success/15 text-clr-success border-clr-success/30'
       : outcome === 'L'
-        ? 'bg-red-500/15 text-red-400 border-red-500/30'
-        : 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+        ? 'bg-red-500/15 text-red-500 border-red-500/30'
+        : 'bg-clr-warning/15 text-clr-warning border-clr-warning/30';
     return (
       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${color}`}>
         {match.result}
@@ -187,7 +187,7 @@ export default function MatchesList({ teamId, onSelectMatch }: MatchesListProps)
               </span>
             )}
             {match.completed && !match.result && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-clr-success/15 text-clr-success border border-clr-success/30">
                 Completed
               </span>
             )}
@@ -231,7 +231,7 @@ export default function MatchesList({ teamId, onSelectMatch }: MatchesListProps)
         {opp?.traits && opp.traits.length > 0 && (
           <div className="px-4 pb-2.5 flex flex-wrap gap-1">
             {opp.traits.slice(0, 3).map(trait => (
-              <span key={trait} className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-accent/10 text-accent/70 border border-accent/15">
+              <span key={trait} className="px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-accent/10 text-accent border border-accent/15">
                 {trait}
               </span>
             ))}

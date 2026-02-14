@@ -24,6 +24,12 @@ export default {
           muted: 'rgb(var(--txt-muted) / <alpha-value>)',
           faint: 'rgb(var(--txt-faint) / <alpha-value>)',
         },
+        clr: {
+          success: 'rgb(var(--clr-success) / <alpha-value>)',
+          warning: 'rgb(var(--clr-warning) / <alpha-value>)',
+          info: 'rgb(var(--clr-info) / <alpha-value>)',
+          purple: 'rgb(var(--clr-purple) / <alpha-value>)',
+        },
       },
       fontFamily: {
         sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],

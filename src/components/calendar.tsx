@@ -105,7 +105,7 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
   return (
     <div
       onClick={onClick}
-      className="bg-emerald-500/5 border border-emerald-500/15 rounded p-1.5 cursor-pointer hover:bg-emerald-500/10 transition-colors text-xs relative"
+      className="bg-clr-success/8 border border-clr-success/20 rounded p-1.5 cursor-pointer hover:bg-clr-success/12 transition-colors text-xs relative"
     >
       {/* Intensity indicator bar on left edge */}
       {practice.intensity && (
@@ -116,7 +116,7 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
         />
       )}
 
-      <div className="text-txt-faint text-[10px] flex items-center justify-between">
+      <div className="text-txt-muted text-[10px] flex items-center justify-between">
         <span>{to12Hour(practice.time)} – {to12Hour(endTime)}</span>
         {practice.sessionType && (
           <span
@@ -132,19 +132,19 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
       </div>
       <div className="font-medium text-txt mt-0.5">{practice.focus}</div>
       {activities.length > 0 && (
-        <div className="text-txt-faint mt-0.5 line-clamp-2 text-[10px]">
+        <div className="text-txt-muted mt-0.5 line-clamp-2 text-[10px]">
           {activities.join(' \u00b7 ')}
         </div>
       )}
       {((practice.unitTags && practice.unitTags.length > 0) || (practice.phaseTags && practice.phaseTags.length > 0)) && (
         <div className="flex flex-wrap gap-0.5 mt-1">
           {(practice.unitTags ?? []).slice(0, 1).map(tag => (
-            <span key={tag} className="px-1 py-0 rounded text-[8px] font-medium bg-accent/10 text-accent/70">
+            <span key={tag} className="px-1 py-0 rounded text-[8px] font-medium bg-accent/10 text-accent">
               {tag}
             </span>
           ))}
           {(practice.phaseTags ?? []).slice(0, 1).map(tag => (
-            <span key={tag} className="px-1 py-0 rounded text-[8px] font-medium bg-emerald-500/10 text-emerald-400/70">
+            <span key={tag} className="px-1 py-0 rounded text-[8px] font-medium bg-clr-success/10 text-clr-success">
               {tag}
             </span>
           ))}
@@ -154,8 +154,8 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
         <span
           className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium ${
             practice.status === 'completed'
-              ? 'bg-emerald-500/15 text-emerald-400'
-              : 'bg-surface-4 text-txt-faint'
+              ? 'bg-clr-success/15 text-clr-success'
+              : 'bg-surface-4 text-txt-muted'
           }`}
         >
           {practice.status}
@@ -177,20 +177,20 @@ function WeekMatchCard({ match, onClick }: { match: Match; onClick: () => void }
   return (
     <div
       onClick={onClick}
-      className="bg-accent/5 border border-accent/15 rounded p-1.5 cursor-pointer hover:bg-accent/10 transition-colors text-xs"
+      className="bg-accent/10 border border-accent/25 rounded p-1.5 cursor-pointer hover:bg-accent/15 transition-colors text-xs"
     >
-      <div className="text-txt-faint text-[10px]">{to12Hour(match.time)}</div>
+      <div className="text-txt-muted text-[10px]">{to12Hour(match.time)}</div>
       <div className="font-medium text-accent mt-0.5">vs {match.opponent}</div>
       {match.location && (
-        <div className="text-txt-faint mt-0.5 truncate text-[10px]">{match.location}</div>
+        <div className="text-txt-muted mt-0.5 truncate text-[10px]">{match.location}</div>
       )}
       {match.formation && (
-        <div className="text-txt-faint mt-0.5 text-[10px]">{match.formation}</div>
+        <div className="text-txt-muted mt-0.5 text-[10px]">{match.formation}</div>
       )}
       {match.opponentTraits && match.opponentTraits.length > 0 && (
         <div className="flex flex-wrap gap-0.5 mt-1">
           {match.opponentTraits.slice(0, 2).map(trait => (
-            <span key={trait} className="px-1 py-0 rounded text-[8px] font-medium bg-amber-500/10 text-amber-400/70">
+            <span key={trait} className="px-1 py-0 rounded text-[8px] font-medium bg-clr-warning/10 text-clr-warning">
               {trait}
             </span>
           ))}
@@ -202,10 +202,10 @@ function WeekMatchCard({ match, onClick }: { match: Match; onClick: () => void }
       <span
         className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
           match.result
-            ? 'bg-emerald-500/15 text-emerald-400'
+            ? 'bg-clr-success/15 text-clr-success'
             : match.completed
-              ? 'bg-emerald-500/15 text-emerald-400'
-              : 'bg-surface-4 text-txt-faint'
+              ? 'bg-clr-success/15 text-clr-success'
+              : 'bg-surface-4 text-txt-muted'
         }`}
       >
         {match.result || (match.completed ? 'completed' : 'upcoming')}
@@ -308,11 +308,11 @@ export default function Calendar({ teamId, initialMode, onNavigateToDay, onNavig
 
           {/* Training hints */}
           {suggestedPhases.length > 0 && (
-            <div className="mb-3 px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/15 flex items-center gap-2 text-xs flex-wrap">
-              <span className="text-amber-400/80 font-medium shrink-0">Training hints:</span>
+            <div className="mb-3 px-3 py-2 rounded-lg bg-clr-warning/5 border border-clr-warning/15 flex items-center gap-2 text-xs flex-wrap">
+              <span className="text-clr-warning font-medium shrink-0">Training hints:</span>
               <div className="flex gap-1.5 flex-wrap">
                 {suggestedPhases.map(phase => (
-                  <span key={phase} className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400/70 border border-amber-500/15">
+                  <span key={phase} className="px-2 py-0.5 rounded-full bg-clr-warning/10 text-clr-warning border border-clr-warning/15">
                     {phase}
                   </span>
                 ))}
@@ -455,28 +455,44 @@ export default function Calendar({ teamId, initialMode, onNavigateToDay, onNavig
                           day
                         )}
                       </div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {allEvents.slice(0, 3).map(event =>
                           event.type === 'match' ? (
                             <div
                               key={`m-${event.data.id}`}
                               onClick={(e) => { e.stopPropagation(); onNavigateToMatch?.(event.data.id!); }}
-                              className="text-[10px] leading-tight px-1 py-0.5 rounded bg-accent/10 text-accent truncate cursor-pointer hover:bg-accent/20 transition-colors"
+                              className="px-1.5 py-1 rounded bg-accent/15 border border-accent/20 cursor-pointer hover:bg-accent/25 transition-colors"
                             >
-                              vs {event.data.opponent}
+                              <div className="flex items-center gap-1 text-[10px] font-semibold text-accent leading-tight truncate">
+                                {(event.data as Match).isHome != null && (
+                                  <span className={`shrink-0 text-[8px] font-bold uppercase px-1 rounded ${(event.data as Match).isHome ? 'bg-accent/20 text-accent' : 'bg-surface-4 text-txt-muted'}`}>
+                                    {(event.data as Match).isHome ? 'H' : 'A'}
+                                  </span>
+                                )}
+                                <span className="truncate">vs {(event.data as Match).opponent}</span>
+                              </div>
+                              <div className="text-[9px] text-txt-muted leading-tight mt-0.5">
+                                {to12Hour((event.data as Match).time)}
+                                {(event.data as Match).location && <span className="hidden sm:inline"> · {(event.data as Match).location}</span>}
+                              </div>
                             </div>
                           ) : (
                             <div
                               key={`p-${event.data.id}`}
                               onClick={(e) => { e.stopPropagation(); setSelectedPracticeId(event.data.id!); }}
-                              className="text-[10px] leading-tight px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400/80 truncate cursor-pointer hover:bg-emerald-500/20 transition-colors"
+                              className="px-1.5 py-1 rounded bg-clr-success/10 border border-clr-success/20 cursor-pointer hover:bg-clr-success/15 transition-colors"
                             >
-                              {event.data.focus}
+                              <div className="text-[10px] font-medium text-txt leading-tight truncate">
+                                {(event.data as Practice).focus}
+                              </div>
+                              <div className="text-[9px] text-txt-muted leading-tight mt-0.5">
+                                {to12Hour((event.data as Practice).time)}
+                              </div>
                             </div>
                           )
                         )}
                         {allEvents.length > 3 && (
-                          <div className="text-[9px] text-txt-faint pl-1">+{allEvents.length - 3} more</div>
+                          <div className="text-[9px] text-txt-muted pl-1">+{allEvents.length - 3} more</div>
                         )}
                       </div>
                     </div>
@@ -489,13 +505,13 @@ export default function Calendar({ teamId, initialMode, onNavigateToDay, onNavig
           </div>
 
           {/* Legend */}
-          <div className="flex gap-4 mt-3 text-[10px] text-txt-faint">
+          <div className="flex gap-4 mt-3 text-[10px] text-txt-muted">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-sm bg-accent/40" />
+              <span className="w-2 h-2 rounded-sm bg-accent/60" />
               Match
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-sm bg-emerald-500/40" />
+              <span className="w-2 h-2 rounded-sm bg-clr-success/60" />
               Practice
             </div>
           </div>
