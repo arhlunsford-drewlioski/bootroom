@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import type { Practice, SessionNote } from '../db/database';
+import type { Practice, SessionNote, SessionType } from '../db/database';
 import { UNIT_TAGS, PHASE_TAGS } from '../constants/tags';
+import { SESSION_TYPES } from '../constants/periodization';
 import { to12Hour } from '../utils/time';
 import TagPicker from './ui/TagPicker';
 import Textarea from './ui/Textarea';
+import Select from './ui/Select';
 import Button from './ui/Button';
 import ConfirmDialog from './ui/ConfirmDialog';
 import SessionNotes from './SessionNotes';
 import SidelineView from './SidelineView';
+import PhaseContext, { usePhaseRecommendations } from './PhaseContext';
 
 interface PracticeDetailProps {
   practiceId: number;
@@ -36,11 +39,19 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
   const [sessionNotes, setSessionNotes] = useState<SessionNote[]>([]);
   const [reflection, setReflection] = useState('');
 
+  // Periodization fields
+  const [intensity, setIntensity] = useState<number>(5);
+  const [sessionType, setSessionType] = useState<SessionType | undefined>();
+  const [duration, setDuration] = useState<number>(90);
+
   // Feature 6: Sideline view
   const [showSideline, setShowSideline] = useState(false);
 
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Get phase-aware recommendations
+  const phaseRecs = usePhaseRecommendations(practice?.teamId ?? 0, practice?.date ?? '');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -58,6 +69,9 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
       setPhaseTags(practice.phaseTags ?? []);
       setSessionNotes(practice.sessionNotes ?? []);
       setReflection(practice.reflection ?? '');
+      setIntensity(practice.intensity ?? 5);
+      setSessionType(practice.sessionType);
+      setDuration(practice.duration ?? 90);
     }
   }, [practice]);
 
@@ -94,6 +108,9 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
         phaseTags: phaseTags.length > 0 ? phaseTags : undefined,
         sessionNotes: sessionNotes.length > 0 ? sessionNotes : undefined,
         reflection: reflection || undefined,
+        intensity,
+        sessionType,
+        duration,
       });
     } finally {
       setSaving(false);
@@ -166,6 +183,98 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
             <p className="text-xs text-txt-faint mt-1">
               {formattedDate} &middot; {to12Hour(practice.time)}
             </p>
+          </div>
+
+          {/* Phase Context */}
+          {practice && (
+            <div className="bg-surface-2 rounded-lg p-3 border border-surface-5">
+              <PhaseContext teamId={practice.teamId} date={practice.date} />
+              {phaseRecs.recommendations.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-surface-5">
+                  <div className="text-[10px] font-semibold text-txt-muted mb-1.5">Recommendations</div>
+                  <ul className="space-y-1 text-[10px] text-txt-faint">
+                    {phaseRecs.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-accent mt-0.5">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Periodization Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Select
+              label="Session Type"
+              value={sessionType ?? ''}
+              onChange={e => {
+                const type = e.target.value as SessionType;
+                setSessionType(type || undefined);
+                // Auto-suggest intensity based on session type
+                if (type && SESSION_TYPES[type]) {
+                  setIntensity(SESSION_TYPES[type].baseIntensity);
+                }
+              }}
+            >
+              <option value="">Not specified</option>
+              {(Object.keys(SESSION_TYPES) as SessionType[]).map(type => (
+                <option key={type} value={type}>
+                  {SESSION_TYPES[type].label}
+                </option>
+              ))}
+            </Select>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-muted mb-1">
+                Duration (min)
+              </label>
+              <input
+                type="number"
+                min="15"
+                max="180"
+                step="15"
+                value={duration}
+                onChange={e => setDuration(parseInt(e.target.value) || 90)}
+                className="h-9 w-full rounded-md border border-surface-5 bg-surface-0 px-3 text-sm text-txt focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-txt-muted mb-1">
+                Intensity {intensity}/10
+                {phaseRecs.targetIntensity && (
+                  <span className="ml-1 text-[10px] text-accent">
+                    (target: {phaseRecs.targetIntensity})
+                  </span>
+                )}
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={intensity}
+                onChange={e => setIntensity(parseInt(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-surface-3"
+                style={{
+                  accentColor: sessionType ? SESSION_TYPES[sessionType].color : '#06b6d4'
+                }}
+              />
+              <div className="flex justify-between text-[9px] text-txt-faint mt-0.5">
+                <span>Low</span>
+                <span
+                  className="font-semibold"
+                  style={{
+                    color: sessionType ? SESSION_TYPES[sessionType].color : '#06b6d4'
+                  }}
+                >
+                  {intensity}
+                </span>
+                <span>Peak</span>
+              </div>
+            </div>
           </div>
 
           {/* Feature 3: Unit/Phase tags */}

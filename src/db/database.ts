@@ -95,12 +95,14 @@ export interface LineupTemplate {
   createdAt: string;
 }
 
+export type SessionType = 'technical' | 'tactical' | 'physical' | 'fitness' | 'recovery';
+
 export interface Practice {
   id?: number;
   teamId: number;
   date: string;
   time: string;
-  duration?: number;
+  duration?: number; // minutes
   focus: string;
   status: 'planned' | 'completed';
   warmup?: string;
@@ -113,6 +115,9 @@ export interface Practice {
   phaseTags?: string[];
   sessionNotes?: SessionNote[];
   reflection?: string;
+  // Periodization enhancements
+  intensity?: number; // 1-10 scale for workload tracking
+  sessionType?: SessionType; // categorization for periodization
 }
 
 export interface PlayerEvaluation {
@@ -161,12 +166,27 @@ export interface SeasonBlock {
   focusTheme?: string;
 }
 
+export type PeriodizationRowType = 'training' | 'technical' | 'tactical' | 'physical';
+
+export interface PeriodizationBlock {
+  id?: number;
+  teamId: number;
+  type: PeriodizationRowType; // Which row this block belongs to
+  label: string;
+  startDate: string;
+  endDate: string;
+  color?: string;
+  focusTheme?: string; // Specific training focus for this period
+  targetIntensity?: number; // 1-10 scale, suggested intensity for this period
+}
+
 class BootroomDatabase extends Dexie {
   teams!: Table<Team>;
   players!: Table<Player>;
   matches!: Table<Match>;
   practices!: Table<Practice>;
   seasonBlocks!: Table<SeasonBlock>;
+  periodizationBlocks!: Table<PeriodizationBlock>;
   opponents!: Table<Opponent>;
   lineupTemplates!: Table<LineupTemplate>;
   playerEvaluations!: Table<PlayerEvaluation>;
@@ -219,6 +239,19 @@ class BootroomDatabase extends Dexie {
       matches: '++id, teamId, date',
       practices: '++id, teamId, date',
       seasonBlocks: '++id, teamId, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId',
+      playerEvaluations: '++id, playerId, teamId, date',
+      playerStats: '++id, playerId, teamId, matchId, date'
+    });
+    // v6: adds periodizationBlocks table and intensity/sessionType to practices
+    this.version(6).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      periodizationBlocks: '++id, teamId, type, startDate',
       opponents: '++id, teamId',
       lineupTemplates: '++id, teamId, matchId',
       playerEvaluations: '++id, playerId, teamId, date',

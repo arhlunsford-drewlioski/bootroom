@@ -7,6 +7,7 @@ import EventFormModal from './ui/EventFormModal';
 import Button from './ui/Button';
 import { getSuggestedPhases } from '../utils/training-hints';
 import { computeEndTime, getWeekDates, getWeekLabel, toDateStr, isToday, to12Hour } from '../utils/time';
+import { SESSION_TYPES } from '../constants/periodization';
 
 type ViewMode = 'month' | 'week';
 
@@ -87,13 +88,47 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
   const endTime = computeEndTime(practice.time, practice.duration);
   const activities = [practice.activity1, practice.activity2, practice.activity3, practice.activity4].filter(Boolean);
 
+  // Get session type styling
+  const sessionTypeColor = practice.sessionType && SESSION_TYPES[practice.sessionType]
+    ? SESSION_TYPES[practice.sessionType].color
+    : '#10b981';
+
+  // Get intensity bar color (gradient from green to red)
+  const getIntensityColor = (intensity?: number) => {
+    if (!intensity) return '#8899b0'; // muted
+    if (intensity <= 3) return '#10b981'; // green
+    if (intensity <= 5) return '#f59e0b'; // amber
+    if (intensity <= 7) return '#f97316'; // orange
+    return '#ef4444'; // red
+  };
+
   return (
     <div
       onClick={onClick}
-      className="bg-emerald-500/5 border border-emerald-500/15 rounded p-1.5 cursor-pointer hover:bg-emerald-500/10 transition-colors text-xs"
+      className="bg-emerald-500/5 border border-emerald-500/15 rounded p-1.5 cursor-pointer hover:bg-emerald-500/10 transition-colors text-xs relative"
     >
-      <div className="text-txt-faint text-[10px]">
-        {to12Hour(practice.time)} – {to12Hour(endTime)}
+      {/* Intensity indicator bar on left edge */}
+      {practice.intensity && (
+        <div
+          className="absolute left-0 top-0 bottom-0 w-1 rounded-l"
+          style={{ backgroundColor: getIntensityColor(practice.intensity) }}
+          title={`Intensity: ${practice.intensity}/10`}
+        />
+      )}
+
+      <div className="text-txt-faint text-[10px] flex items-center justify-between">
+        <span>{to12Hour(practice.time)} – {to12Hour(endTime)}</span>
+        {practice.sessionType && (
+          <span
+            className="px-1.5 py-0.5 rounded text-[8px] font-medium"
+            style={{
+              backgroundColor: `${sessionTypeColor}20`,
+              color: sessionTypeColor
+            }}
+          >
+            {SESSION_TYPES[practice.sessionType].label}
+          </span>
+        )}
       </div>
       <div className="font-medium text-txt mt-0.5">{practice.focus}</div>
       {activities.length > 0 && (
@@ -115,15 +150,25 @@ function WeekPracticeCard({ practice, onClick }: { practice: Practice; onClick: 
           ))}
         </div>
       )}
-      <span
-        className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
-          practice.status === 'completed'
-            ? 'bg-emerald-500/15 text-emerald-400'
-            : 'bg-surface-4 text-txt-faint'
-        }`}
-      >
-        {practice.status}
-      </span>
+      <div className="flex items-center gap-2 mt-1">
+        <span
+          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium ${
+            practice.status === 'completed'
+              ? 'bg-emerald-500/15 text-emerald-400'
+              : 'bg-surface-4 text-txt-faint'
+          }`}
+        >
+          {practice.status}
+        </span>
+        {practice.intensity && (
+          <span
+            className="text-[9px] font-medium"
+            style={{ color: getIntensityColor(practice.intensity) }}
+          >
+            {practice.intensity}/10
+          </span>
+        )}
+      </div>
     </div>
   );
 }
