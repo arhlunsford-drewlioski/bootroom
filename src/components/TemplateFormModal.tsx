@@ -113,7 +113,7 @@ export default function TemplateFormModal({ open, template, onClose, onSaved }: 
         activities: activityList,
         unitTags,
         phaseTags,
-        isBuiltIn: false,
+        isBuiltIn: 0 as const,
       };
 
       if (template?.id) {

@@ -37,7 +37,7 @@ export default function TemplateDetailModal({ templateId, onClose, onEdit, onDup
   };
 
   const handleDuplicate = async () => {
-    const copy = { ...template, id: undefined, name: `${template.name} (Copy)`, isBuiltIn: false };
+    const copy = { ...template, id: undefined, name: `${template.name} (Copy)`, isBuiltIn: 0 as const };
     await db.sessionTemplates.add(copy);
     onDuplicate?.(copy as SessionTemplate);
     onClose();

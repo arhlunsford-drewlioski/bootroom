@@ -107,7 +107,7 @@ export interface Activity {
   suggestedDuration: number; // minutes
   intensity: number; // 1-10
   description: string;
-  isBuiltIn: boolean;
+  isBuiltIn: 0 | 1;
   packId?: string;
   isPremium?: boolean;
 }
@@ -128,7 +128,7 @@ export interface SessionTemplate {
   unitTags?: string[];
   phaseTags?: string[];
   description?: string;
-  isBuiltIn: boolean;
+  isBuiltIn: 0 | 1;
   packId?: string;
   isPremium?: boolean;
 }

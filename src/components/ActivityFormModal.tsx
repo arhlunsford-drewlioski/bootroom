@@ -55,7 +55,7 @@ export default function ActivityFormModal({ open, activity, onClose, onSaved }: 
         suggestedDuration: duration,
         intensity,
         description: description.trim(),
-        isBuiltIn: false,
+        isBuiltIn: 0 as const,
       };
       if (activity?.id) {
         await db.activities.update(activity.id, data);

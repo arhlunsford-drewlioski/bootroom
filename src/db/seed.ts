@@ -4,10 +4,12 @@ import { BUILTIN_ACTIVITIES } from '../constants/activities';
 import { BUILTIN_TEMPLATES } from '../constants/session-templates';
 
 export async function seedBuiltInData(): Promise<void> {
-  const existingCount = await db.activities.where('isBuiltIn').equals(1).count();
-  if (existingCount > 0) return;
-
   await db.transaction('rw', [db.activities, db.sessionTemplates], async () => {
+    // Remove all existing built-in records (cleans up any duplicates).
+    await db.activities.where('isBuiltIn').equals(1).delete();
+    await db.sessionTemplates.where('isBuiltIn').equals(1).delete();
+
+    // Insert one clean set of built-in activities
     const activityIds = await db.activities.bulkAdd(
       BUILTIN_ACTIVITIES.map(a => ({ ...a })),
       { allKeys: true },
@@ -26,7 +28,7 @@ export async function seedBuiltInData(): Promise<void> {
       duration: t.duration,
       intensity: t.intensity,
       description: t.description,
-      isBuiltIn: true as const,
+      isBuiltIn: 1 as const,
       unitTags: t.unitTags,
       phaseTags: t.phaseTags,
       activities: t.activitySlots
