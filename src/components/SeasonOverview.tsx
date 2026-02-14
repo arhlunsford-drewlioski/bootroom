@@ -31,6 +31,8 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
 
   // Load data on mount and when teamId changes
   useEffect(() => {
+    let mounted = true;
+
     async function loadData() {
       const [loadedMatches, loadedPractices, loadedBlocks] = await Promise.all([
         db.matches.where('teamId').equals(teamId).toArray(),
@@ -44,12 +46,19 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
         blocks: loadedBlocks.length
       });
 
-      setMatches(loadedMatches);
-      setPractices(loadedPractices);
-      setPeriodizationBlocks(loadedBlocks);
+      if (mounted) {
+        setMatches(loadedMatches);
+        setPractices(loadedPractices);
+        setPeriodizationBlocks(loadedBlocks);
+        console.log('✅ State updated, component should re-render');
+      }
     }
 
     loadData();
+
+    return () => {
+      mounted = false;
+    };
   }, [teamId]);
 
   // Debug logging

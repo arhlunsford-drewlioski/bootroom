@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><title>DB Check</title></head>
+<body>
+<script type="module">
+import Dexie from 'https://unpkg.com/dexie@latest/dist/dexie.mjs';
+
+const db = new Dexie('BootroomDB');
+db.version(7).stores({
+  teams: '++id, name',
+  players: '++id, teamId, name',
+  matches: '++id, teamId, date',
+  practices: '++id, teamId, date',
+  periodizationBlocks: '++id, teamId, type, startDate, endDate'
+});
+
+const matches = await db.matches.toArray();
+const practices = await db.practices.toArray();
+
+console.log('MATCH DATES:');
+matches.forEach(m => {
+  console.log(`  Match ${m.id}: ${m.date} (type: ${typeof m.date})`);
+});
+
+console.log('\nPRACTICE DATES:');
+practices.forEach(p => {
+  console.log(`  Practice ${p.id}: ${p.date} (type: ${typeof p.date}, intensity: ${p.intensity})`);
+});
+
+document.body.innerHTML = '<pre>Check console (F12)</pre>';
+</script>
+</body>
+</html>
