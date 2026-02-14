@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { SeasonBlock, PeriodizationBlock, PeriodizationRowType } from '../db/database';
@@ -22,23 +22,29 @@ interface SeasonOverviewProps {
 }
 
 export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
+  const [editingBlock, setEditingBlock] = useState<Partial<PeriodizationBlock> | null>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Force refresh on mount to fix useLiveQuery issue
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+
   const periodizationBlocks = useLiveQuery(
     () => db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate'),
-    [teamId],
+    [teamId, refreshKey],
   ) ?? [];
 
   const matches = useLiveQuery(
     () => db.matches.where('teamId').equals(teamId).toArray(),
-    [teamId],
+    [teamId, refreshKey],
   ) ?? [];
 
   const practices = useLiveQuery(
     () => db.practices.where('teamId').equals(teamId).toArray(),
-    [teamId],
+    [teamId, refreshKey],
   ) ?? [];
-
-  const [editingBlock, setEditingBlock] = useState<Partial<PeriodizationBlock> | null>(null);
-  const [scrollOffset, setScrollOffset] = useState(0);
 
   // Debug logging
   console.log('SeasonOverview Debug:', {
