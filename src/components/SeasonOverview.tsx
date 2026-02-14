@@ -40,6 +40,14 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
   const [editingBlock, setEditingBlock] = useState<Partial<PeriodizationBlock> | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
 
+  // Debug logging
+  console.log('SeasonOverview Debug:', {
+    teamId,
+    matchesLoaded: matches.length,
+    practicesLoaded: practices.length,
+    blocksLoaded: periodizationBlocks.length
+  });
+
   // Generate 6 months of weeks starting from current month
   const monthData = useMemo(() => {
     const today = new Date();
