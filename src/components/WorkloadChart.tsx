@@ -74,6 +74,16 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
   const maxWorkload = Math.max(1, ...weekData.map(w => w.workload));
   const hasAnyWorkload = weekData.some(w => w.workload > 0);
 
+  // Debug logging
+  const weeksWithLoad = weekData.filter(w => w.workload > 0);
+  console.log('WorkloadChart Debug:', {
+    totalWeeks: weekData.length,
+    weeksWithLoad: weeksWithLoad.length,
+    maxWorkload,
+    hasAnyWorkload,
+    sampleWeek: weeksWithLoad[0]
+  });
+
   function toDateStr(d: Date): string {
     return d.toISOString().slice(0, 10);
   }
@@ -105,7 +115,7 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
       {/* Workload bars */}
       <div className="flex items-end gap-px h-24 bg-surface-2 rounded-lg p-2 min-w-[500px] overflow-x-auto relative">
         {!hasAnyWorkload && (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center z-20">
             <div className="text-center">
               <div className="text-txt-faint text-sm">No workload data yet</div>
               <div className="text-txt-faint text-xs mt-1">

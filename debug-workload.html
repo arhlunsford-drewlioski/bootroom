@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #0c1421; padding: 20px; font-family: sans-serif; color: #e2e8f0; }
+        .container { background: #1a2740; border-radius: 8px; padding: 8px; height: 96px; display: flex; align-items: flex-end; gap: 1px; }
+        .bar { flex: 1; border-radius: 4px 4px 0 0; }
+    </style>
+</head>
+<body>
+    <h3>Workload Bar Color Test</h3>
+    <p>Container background: #1a2740 (surface-2)</p>
+    
+    <div class="container">
+        <div class="bar" style="height: 50%; background: linear-gradient(to top, #10b981, #10b981dd);"></div>
+        <div class="bar" style="height: 0%;"></div>
+        <div class="bar" style="height: 80%; background: linear-gradient(to top, #10b981, #10b981dd);"></div>
+        <div class="bar" style="height: 0%;"></div>
+        <div class="bar" style="height: 30%; background: linear-gradient(to top, #10b981, #10b981dd);"></div>
+    </div>
+    
+    <p style="margin-top: 20px;">If you see green bars above, colors work. If not, browser issue.</p>
+</body>
+</html>
