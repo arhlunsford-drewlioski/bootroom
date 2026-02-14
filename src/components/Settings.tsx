@@ -3,6 +3,7 @@ import { exportBackup, importBackup } from '../utils/backup';
 import { getStoredTheme, setTheme, type ThemeMode } from '../utils/theme';
 import Button from './ui/Button';
 import Card from './ui/Card';
+import IcsImportCard from './IcsImportCard';
 
 export default function Settings() {
   const [exportStatus, setExportStatus] = useState<'idle' | 'done' | 'error'>('idle');
@@ -85,6 +86,9 @@ export default function Settings() {
           </button>
         </div>
       </Card>
+
+      {/* Import Calendar */}
+      <IcsImportCard />
 
       {/* Backup */}
       <Card>
