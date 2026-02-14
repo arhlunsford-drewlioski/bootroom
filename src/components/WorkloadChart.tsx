@@ -134,7 +134,8 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
           const color = getWorkloadColor(week.intensity);
 
           // Ensure minimum visible height for bars with load
-          const displayHeight = week.workload > 0 ? Math.max(8, heightPercent) : 0;
+          // Temporarily force 50% height for ANY bar to test visibility
+          const displayHeight = week.workload > 0 ? Math.max(50, heightPercent) : 0;
 
           return (
             <div
