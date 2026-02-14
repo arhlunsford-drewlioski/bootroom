@@ -83,7 +83,7 @@ function App() {
               }
             </svg>
           </button>
-          <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">BOOTROOM</h1>
+          <h1 onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }} className="text-2xl font-bold text-accent tracking-wider font-display cursor-pointer">COATCH</h1>
           {/* Spacer to keep logo roughly centered */}
           <div className="w-[38px]" />
         </div>
@@ -106,7 +106,7 @@ function App() {
               onClick={() => { setCurrentView('dashboard'); setMobileNavOpen(false); }}
               className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer"
             >
-              BOOTROOM
+              COATCH
             </h1>
             <div className="space-y-1 flex-1">
               {navItem('dashboard', 'Dashboard')}
@@ -125,7 +125,7 @@ function App() {
 
         {/* Desktop sidebar */}
         <aside className="hidden md:block w-52 shrink-0 bg-surface-1 min-h-screen border-r border-surface-5 p-4">
-          <h1 onClick={() => setCurrentView('dashboard')} className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer">BOOTROOM</h1>
+          <h1 onClick={() => setCurrentView('dashboard')} className="text-3xl font-bold text-accent tracking-wider mb-6 font-display cursor-pointer">COATCH</h1>
           <nav className="space-y-1">
             {navItem('dashboard', 'Dashboard')}
             {navItem('team', 'Team')}

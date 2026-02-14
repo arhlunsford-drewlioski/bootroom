@@ -236,7 +236,7 @@ export interface PeriodizationBlock {
   targetIntensity?: number; // 1-10 scale, suggested intensity for this period
 }
 
-class BootroomDatabase extends Dexie {
+class CoAtchDatabase extends Dexie {
   teams!: Table<Team>;
   players!: Table<Player>;
   matches!: Table<Match>;
@@ -348,7 +348,7 @@ class BootroomDatabase extends Dexie {
   }
 }
 
-export const db = new BootroomDatabase();
+export const db = new CoAtchDatabase();
 
 // Expose db globally for debugging in development
 if (import.meta.env.DEV) {

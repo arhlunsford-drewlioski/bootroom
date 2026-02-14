@@ -1,6 +1,13 @@
 export type ThemeMode = 'light' | 'dark';
 
-const THEME_KEY = 'bootroom-theme';
+const THEME_KEY = 'coatch-theme';
+const OLD_THEME_KEY = 'bootroom-theme';
+
+// Migrate old localStorage key once
+if (!localStorage.getItem(THEME_KEY) && localStorage.getItem(OLD_THEME_KEY)) {
+  localStorage.setItem(THEME_KEY, localStorage.getItem(OLD_THEME_KEY)!);
+  localStorage.removeItem(OLD_THEME_KEY);
+}
 
 /** Convert hex (#RRGGBB) to "R G B" channel string for CSS variables */
 function hexToChannels(hex: string): string {

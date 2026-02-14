@@ -62,6 +62,16 @@ export default function Settings() {
     <div className="max-w-lg mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-txt font-display tracking-wider">SETTINGS</h2>
 
+      {/* About */}
+      <Card>
+        <h3 className="text-lg font-bold text-accent font-display tracking-wider mb-1">COATCH</h3>
+        <p className="text-sm text-txt italic mb-2">CoAtch (n)</p>
+        <ol className="text-xs text-txt-muted space-y-1 list-decimal list-inside">
+          <li>multiplatform sports planning app for practices, games, and season management</li>
+          <li>term of endearment from a player to a coach</li>
+        </ol>
+      </Card>
+
       {/* Theme */}
       <Card>
         <h3 className="text-sm font-semibold text-txt-muted uppercase tracking-wider mb-2">Appearance</h3>

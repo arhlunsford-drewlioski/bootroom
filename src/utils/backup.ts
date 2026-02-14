@@ -50,7 +50,7 @@ export async function exportBackup(): Promise<void> {
   const a = document.createElement('a');
   const dateStr = new Date().toISOString().slice(0, 10);
   a.href = url;
-  a.download = `bootroom-backup-${dateStr}.json`;
+  a.download = `coatch-backup-${dateStr}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

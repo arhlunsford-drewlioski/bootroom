@@ -115,7 +115,7 @@ export async function exportLineupPng({
   ctx.font = '11px "Inter", system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('BOOTROOM', W / 2, HEADER_H + FIELD_H + FOOTER_H / 2);
+  ctx.fillText('COATCH', W / 2, HEADER_H + FIELD_H + FOOTER_H / 2);
 
   // ── Download ──
   const dataUrl = canvas.toDataURL('image/png');
