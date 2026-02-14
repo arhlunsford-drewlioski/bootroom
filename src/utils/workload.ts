@@ -44,11 +44,12 @@ export function calculateWeeklyWorkload(
   const weekEndStr = endDate.toISOString().split('T')[0];
 
   // Filter matches in this week
-  // Normalize match dates to ISO strings (handle both Date objects and strings)
+  // Normalize match dates to ISO strings (handle both Date objects and strings from legacy data)
   const weekMatches = matches.filter(m => {
-    const matchDateStr = m.date instanceof Date
-      ? m.date.toISOString().split('T')[0]
-      : m.date;
+    const raw = m.date as unknown;
+    const matchDateStr = raw instanceof Date
+      ? raw.toISOString().split('T')[0]
+      : String(m.date);
     return matchDateStr >= weekStartStr && matchDateStr < weekEndStr;
   });
 
