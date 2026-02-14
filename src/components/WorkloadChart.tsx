@@ -9,6 +9,15 @@ interface WorkloadChartProps {
 }
 
 export default function WorkloadChart({ matches, practices, scrollOffset }: WorkloadChartProps) {
+  // CRITICAL DEBUG: Check what props are actually received
+  console.log('🔍 WorkloadChart Props Received:', {
+    matchesReceived: matches?.length ?? 'undefined',
+    practicesReceived: practices?.length ?? 'undefined',
+    matchSample: matches?.[0],
+    practiceSample: practices?.[0],
+    scrollOffset
+  });
+
   // Show loading state if data isn't ready
   if (!matches || !practices) {
     return (

@@ -51,7 +51,13 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
     teamId,
     matchesLoaded: matches.length,
     practicesLoaded: practices.length,
-    blocksLoaded: periodizationBlocks.length
+    blocksLoaded: periodizationBlocks.length,
+    matchesSample: matches[0],
+    practicesSample: practices[0],
+    aboutToPassToWorkloadChart: {
+      matchesLength: matches.length,
+      practicesLength: practices.length
+    }
   });
 
   // Generate 6 months of weeks starting from current month
