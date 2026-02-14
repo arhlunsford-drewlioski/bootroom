@@ -5,9 +5,22 @@ import { BUILTIN_TEMPLATES } from '../constants/session-templates';
 
 export async function seedBuiltInData(): Promise<void> {
   await db.transaction('rw', [db.activities, db.sessionTemplates], async () => {
-    // Remove all existing built-in records (cleans up any duplicates).
-    await db.activities.where('isBuiltIn').equals(1).delete();
-    await db.sessionTemplates.where('isBuiltIn').equals(1).delete();
+    // Purge ALL old built-in records. We need to scan the full table because
+    // legacy records stored isBuiltIn as boolean `true` which is not a valid
+    // IndexedDB key and can't be found via .where().equals().
+    const allActivities = await db.activities.toArray();
+    const oldActivityIds = allActivities
+      .filter(a => a.isBuiltIn)
+      .map(a => a.id!)
+      .filter(Boolean);
+    if (oldActivityIds.length) await db.activities.bulkDelete(oldActivityIds);
+
+    const allTemplates = await db.sessionTemplates.toArray();
+    const oldTemplateIds = allTemplates
+      .filter(t => t.isBuiltIn)
+      .map(t => t.id!)
+      .filter(Boolean);
+    if (oldTemplateIds.length) await db.sessionTemplates.bulkDelete(oldTemplateIds);
 
     // Insert one clean set of built-in activities
     const activityIds = await db.activities.bulkAdd(

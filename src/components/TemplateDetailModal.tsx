@@ -129,7 +129,10 @@ export default function TemplateDetailModal({ templateId, onClose, onEdit, onDup
         {/* Footer */}
         <div className="px-4 py-3 border-t border-surface-5 shrink-0 flex gap-2">
           {template.isBuiltIn ? (
-            <Button onClick={handleDuplicate} className="flex-1">Duplicate & Edit</Button>
+            <>
+              <Button onClick={handleDuplicate} className="flex-1">Duplicate & Edit</Button>
+              <Button variant="secondary" onClick={() => setShowDelete(true)}>Delete</Button>
+            </>
           ) : (
             <>
               <Button onClick={() => onEdit?.(template)} className="flex-1">Edit</Button>

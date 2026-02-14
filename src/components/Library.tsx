@@ -172,22 +172,22 @@ export default function Library() {
                       <span>{a.suggestedDuration} min</span>
                       <span>Intensity {a.intensity}/10</span>
                     </div>
-                    {!a.isBuiltIn && (
-                      <div className="flex gap-1">
+                    <div className="flex gap-1">
+                      {!a.isBuiltIn && (
                         <button
                           onClick={() => { setEditingActivity(a); setShowActivityForm(true); }}
                           className="text-[10px] text-txt-faint hover:text-accent transition-colors"
                         >
                           Edit
                         </button>
-                        <button
-                          onClick={() => setDeleteActivity(a)}
-                          className="text-[10px] text-txt-faint hover:text-red-400 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        onClick={() => setDeleteActivity(a)}
+                        className="text-[10px] text-txt-faint hover:text-red-400 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </Card>
               );
