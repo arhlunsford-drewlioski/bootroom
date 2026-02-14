@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import type { Practice, SessionNote, SessionType } from '../db/database';
+import type { Practice, SessionNote, SessionType, ActivityRef } from '../db/database';
 import { UNIT_TAGS, PHASE_TAGS } from '../constants/tags';
 import { SESSION_TYPES } from '../constants/periodization';
 import { to12Hour } from '../utils/time';
@@ -13,6 +13,14 @@ import ConfirmDialog from './ui/ConfirmDialog';
 import SessionNotes from './SessionNotes';
 import SidelineView from './SidelineView';
 import PhaseContext, { usePhaseRecommendations } from './PhaseContext';
+
+function ActivityBadge({ activityRef }: { activityRef: ActivityRef }) {
+  return (
+    <span className="inline-block text-[10px] px-2 py-0.5 rounded-full bg-accent/15 text-accent border border-accent/30 mb-1">
+      {activityRef.activityName}
+    </span>
+  );
+}
 
 interface PracticeDetailProps {
   practiceId: number;
@@ -183,6 +191,11 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
             <p className="text-xs text-txt-faint mt-1">
               {formattedDate} &middot; {to12Hour(practice.time)}
             </p>
+            {practice.templateId && (
+              <span className="inline-block text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-surface-3 text-txt-faint border border-surface-5">
+                From template
+              </span>
+            )}
           </div>
 
           {/* Phase Context */}
@@ -296,11 +309,26 @@ export default function PracticeDetail({ practiceId, onClose }: PracticeDetailPr
           />
 
           {/* Activity fields */}
-          <Textarea label="Warmup" value={warmup} onChange={e => setWarmup(e.target.value)} rows={2} placeholder="Describe warmup..." />
-          <Textarea label="Activity 1" value={activity1} onChange={e => setActivity1(e.target.value)} rows={2} placeholder="Describe activity 1..." />
-          <Textarea label="Activity 2" value={activity2} onChange={e => setActivity2(e.target.value)} rows={2} placeholder="Describe activity 2..." />
-          <Textarea label="Activity 3" value={activity3} onChange={e => setActivity3(e.target.value)} rows={2} placeholder="Describe activity 3..." />
-          <Textarea label="Activity 4" value={activity4} onChange={e => setActivity4(e.target.value)} rows={2} placeholder="Describe activity 4..." />
+          <div>
+            {practice.warmupRef && <ActivityBadge activityRef={practice.warmupRef} />}
+            <Textarea label={practice.warmupRef ? undefined : "Warmup"} value={warmup} onChange={e => setWarmup(e.target.value)} rows={2} placeholder="Describe warmup..." />
+          </div>
+          <div>
+            {practice.activity1Ref && <ActivityBadge activityRef={practice.activity1Ref} />}
+            <Textarea label={practice.activity1Ref ? undefined : "Activity 1"} value={activity1} onChange={e => setActivity1(e.target.value)} rows={2} placeholder="Describe activity 1..." />
+          </div>
+          <div>
+            {practice.activity2Ref && <ActivityBadge activityRef={practice.activity2Ref} />}
+            <Textarea label={practice.activity2Ref ? undefined : "Activity 2"} value={activity2} onChange={e => setActivity2(e.target.value)} rows={2} placeholder="Describe activity 2..." />
+          </div>
+          <div>
+            {practice.activity3Ref && <ActivityBadge activityRef={practice.activity3Ref} />}
+            <Textarea label={practice.activity3Ref ? undefined : "Activity 3"} value={activity3} onChange={e => setActivity3(e.target.value)} rows={2} placeholder="Describe activity 3..." />
+          </div>
+          <div>
+            {practice.activity4Ref && <ActivityBadge activityRef={practice.activity4Ref} />}
+            <Textarea label={practice.activity4Ref ? undefined : "Activity 4"} value={activity4} onChange={e => setActivity4(e.target.value)} rows={2} placeholder="Describe activity 4..." />
+          </div>
 
           {/* Image upload */}
           <div>

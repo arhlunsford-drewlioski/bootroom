@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db/database';
 import { initTheme, applyTeamColors } from './utils/theme';
+import { seedBuiltInData } from './db/seed';
 import Dashboard from './components/Dashboard';
 import TeamSetup from './components/TeamSetup';
 import MatchesList from './components/MatchesList';
@@ -10,6 +11,7 @@ import Calendar from './components/calendar';
 import DayView from './components/DayView';
 import SeasonOverview from './components/SeasonOverview';
 import MatchDetail from './components/MatchDetail';
+import Library from './components/Library';
 import Settings from './components/Settings';
 
 // Apply theme immediately on module load (before first render)
@@ -24,6 +26,9 @@ function App() {
 
   const team = useLiveQuery(() => db.teams.toCollection().first(), []);
   const teamId = team?.id ?? 0;
+
+  // Seed built-in activities and session templates on first launch
+  useEffect(() => { seedBuiltInData(); }, []);
 
   // Apply team accent colors whenever the active team changes
   useEffect(() => {
@@ -110,6 +115,7 @@ function App() {
               {navItem('matches', 'Matches')}
               {navItem('lineups', 'Lineups')}
               {navItem('season', 'Season')}
+              {navItem('library', 'Library')}
               <div className="border-t border-surface-5 mt-2 pt-2">
                 {navItem('settings', 'Settings')}
               </div>
@@ -127,6 +133,7 @@ function App() {
             {navItem('matches', 'Matches')}
             {navItem('lineups', 'Lineups')}
             {navItem('season', 'Season')}
+            {navItem('library', 'Library')}
             <div className="border-t border-surface-5 mt-2 pt-2">
               {navItem('settings', 'Settings')}
             </div>
@@ -179,6 +186,7 @@ function App() {
           {currentView === 'season' && (
             <SeasonOverview teamId={teamId} />
           )}
+          {currentView === 'library' && <Library />}
           {currentView === 'settings' && <Settings />}
         </main>
       </div>

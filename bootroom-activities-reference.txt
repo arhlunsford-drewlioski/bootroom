@@ -1,0 +1,170 @@
+BOOTROOM — Built-In Activities & Session Templates Reference
+=============================================================
+
+
+ACTIVITIES
+==========
+
+--- WARMUP ---
+
+1. Dynamic Stretching
+   Duration: 10 min | Intensity: 2/10
+   Progressive dynamic stretches — hip circles, leg swings, high knees, butt kicks, lateral shuffles.
+
+2. Rondo Warmup (4v1)
+   Duration: 10 min | Intensity: 3/10
+   Quick-touch possession circle. 4 players keep the ball from 1 defender in a small grid. Rotate on turnover.
+
+3. Passing Gates
+   Duration: 10 min | Intensity: 3/10
+   Pairs pass through cone gates scattered across the area. Score a point for each completed pass through a gate. Move to a new gate after each pass.
+
+
+--- TECHNICAL ---
+
+4. 5v2 Rondo
+   Duration: 15 min | Intensity: 5/10
+   Possession drill in tight space. 5 attackers maintain possession against 2 defenders. Focus on body shape, first touch, and quick decision-making.
+
+5. 1v1 Finishing
+   Duration: 15 min | Intensity: 6/10
+   Attackers receive a pass and go 1v1 against a defender with a shot on goal. Emphasize quick turn, change of pace, and clinical finishing.
+
+6. Passing Combinations
+   Duration: 15 min | Intensity: 4/10
+   Rehearsed passing patterns — wall passes, overlaps, third-man runs, through balls. Progress from walking pace to game speed.
+
+7. Crossing & Finishing
+   Duration: 15 min | Intensity: 6/10
+   Wide players deliver crosses into the box. Attackers time their runs for near post, far post, and cutback finishes.
+
+
+--- TACTICAL ---
+
+8. Pressing Triggers
+   Duration: 20 min | Intensity: 7/10
+   Team pressing on identified cues — backward pass, poor touch, sideline trap. Work in units to press as a coordinated block.
+
+9. Build Out from Back
+   Duration: 20 min | Intensity: 5/10
+   GK distribution through defensive and midfield thirds. Focus on creating passing angles, movement off the ball, and progressing under pressure.
+
+10. Transition Game
+    Duration: 20 min | Intensity: 7/10
+    Attack-to-defense and defense-to-attack transitions. On turnover, attacking team must press immediately while defending team looks to counter.
+
+11. Defensive Shape
+    Duration: 15 min | Intensity: 5/10
+    Compact defensive lines. Practice sliding as a unit, covering, and maintaining distances between lines against ball movement.
+
+
+--- GAME FORM ---
+
+12. Small-Sided Game (4v4)
+    Duration: 15 min | Intensity: 7/10
+    High-tempo game in a reduced area with small goals. Emphasize quick transitions, tight control, and constant movement.
+
+13. Full Scrimmage
+    Duration: 25 min | Intensity: 8/10
+    Match conditions on a full-size pitch. Apply the session focus in a realistic game environment. Coach can freeze play for coaching moments.
+
+14. Conditioned Game
+    Duration: 20 min | Intensity: 7/10
+    Modified rules to reinforce the session theme — e.g., two-touch only, must play wide before shooting, goals from crosses count double.
+
+
+--- FITNESS ---
+
+15. Agility Circuit
+    Duration: 15 min | Intensity: 8/10
+    Ladder drills, cone weaves, hurdle hops, and short sprints. Rotate through stations with active recovery between sets.
+
+
+--- PHYSICAL ---
+
+16. Interval Sprints
+    Duration: 15 min | Intensity: 9/10
+    Repeated sprint efforts — 30m sprints with walk-back recovery. Progress to longer distances or shorter rest periods.
+
+
+--- SET PIECES ---
+
+17. Corner Kick Routines
+    Duration: 15 min | Intensity: 4/10
+    Rehearse attacking and defending corner variations. Near post flick-ons, far post runs, short corners, and zonal/man-marking assignments.
+
+
+--- RECOVERY ---
+
+18. Cool Down & Stretch
+    Duration: 10 min | Intensity: 1/10
+    Light jog followed by static stretching. Hold each stretch 20-30 seconds. Focus on hamstrings, quads, hip flexors, and calves.
+
+
+
+SESSION TEMPLATES
+=================
+
+1. Heavy Technical — Rondos
+   Type: Technical | Duration: 90 min | Intensity: 5/10
+   Focus: Possession & Quick Passing
+   Rondo-heavy session building from warmup possession circles through tight-space drills to a game-form finish.
+   Activities:
+     Warmup    — Rondo Warmup (4v1)
+     Activity 1 — 5v2 Rondo
+     Activity 2 — Passing Combinations
+     Activity 3 — Small-Sided Game (4v4)
+     Activity 4 — Cool Down & Stretch
+
+2. Tactical — Pressing & Transitions
+   Type: Tactical | Duration: 90 min | Intensity: 7/10
+   Focus: High Press & Transition Play
+   Shape-focused session working defensive pressing triggers and quick attack-to-defense transitions.
+   Activities:
+     Warmup    — Dynamic Stretching
+     Activity 1 — Pressing Triggers
+     Activity 2 — Transition Game
+     Activity 3 — Conditioned Game
+     Activity 4 — Cool Down & Stretch
+
+3. Fitness Session
+   Type: Fitness | Duration: 75 min | Intensity: 9/10
+   Focus: Speed & Conditioning
+   High-intensity fitness work combining agility circuits with repeated sprint efforts and a competitive finish.
+   Activities:
+     Warmup    — Dynamic Stretching
+     Activity 1 — Agility Circuit
+     Activity 2 — Interval Sprints
+     Activity 3 — Small-Sided Game (4v4)
+     Activity 4 — Cool Down & Stretch
+
+4. Set Piece Focus
+   Type: Tactical | Duration: 75 min | Intensity: 5/10
+   Focus: Set Pieces & Finishing
+   Rehearse corner, free kick, and throw-in routines with crossing and finishing practice.
+   Activities:
+     Warmup    — Passing Gates
+     Activity 1 — Corner Kick Routines
+     Activity 2 — Crossing & Finishing
+     Activity 3 — 1v1 Finishing
+     Activity 4 — Cool Down & Stretch
+
+5. Game-Like Session
+   Type: Tactical | Duration: 90 min | Intensity: 7/10
+   Focus: Match Preparation
+   Game-realistic session progressing from build-up play through conditioned games to a full scrimmage.
+   Activities:
+     Warmup    — Rondo Warmup (4v1)
+     Activity 1 — Build Out from Back
+     Activity 2 — Conditioned Game
+     Activity 3 — Full Scrimmage
+     Activity 4 — Cool Down & Stretch
+
+6. Recovery Session
+   Type: Recovery | Duration: 45 min | Intensity: 2/10
+   Focus: Active Recovery
+   Light session focused on recovery after a match or intense training block. Low intensity throughout.
+   Activities:
+     Warmup    — Dynamic Stretching
+     Activity 1 — Passing Gates
+     Activity 2 — Cool Down & Stretch

@@ -1,8 +1,9 @@
 import { db } from '../db/database';
-import type { Team, Player, Match, Practice, SeasonBlock, Opponent, LineupTemplate } from '../db/database';
+import type { Team, Player, Match, Practice, SeasonBlock, Opponent, LineupTemplate, Activity, SessionTemplate } from '../db/database';
+import { seedBuiltInData } from '../db/seed';
 
 interface BackupData {
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   exportedAt: string;
   teams: Team[];
   players: Player[];
@@ -11,10 +12,12 @@ interface BackupData {
   seasonBlocks: SeasonBlock[];
   opponents?: Opponent[];
   lineupTemplates?: LineupTemplate[];
+  activities?: Activity[];
+  sessionTemplates?: SessionTemplate[];
 }
 
 export async function exportBackup(): Promise<void> {
-  const [teams, players, matches, practices, seasonBlocks, opponents, lineupTemplates] = await Promise.all([
+  const [teams, players, matches, practices, seasonBlocks, opponents, lineupTemplates, activities, sessionTemplates] = await Promise.all([
     db.teams.toArray(),
     db.players.toArray(),
     db.matches.toArray(),
@@ -22,10 +25,12 @@ export async function exportBackup(): Promise<void> {
     db.seasonBlocks.toArray(),
     db.opponents.toArray(),
     db.lineupTemplates.toArray(),
+    db.activities.toArray(),
+    db.sessionTemplates.toArray(),
   ]);
 
   const backup: BackupData = {
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     teams,
     players,
@@ -34,6 +39,8 @@ export async function exportBackup(): Promise<void> {
     seasonBlocks,
     opponents,
     lineupTemplates,
+    activities,
+    sessionTemplates,
   };
 
   const json = JSON.stringify(backup, null, 2);
@@ -53,7 +60,7 @@ export async function importBackup(file: File): Promise<{ success: boolean; erro
     const text = await file.text();
     const data = JSON.parse(text) as BackupData;
 
-    if (!data.version || (data.version !== 1 && data.version !== 2)) {
+    if (!data.version || (data.version !== 1 && data.version !== 2 && data.version !== 3)) {
       return { success: false, error: 'Invalid backup version.' };
     }
     if (
@@ -68,7 +75,7 @@ export async function importBackup(file: File): Promise<{ success: boolean; erro
 
     await db.transaction(
       'rw',
-      [db.teams, db.players, db.matches, db.practices, db.seasonBlocks, db.opponents, db.lineupTemplates],
+      [db.teams, db.players, db.matches, db.practices, db.seasonBlocks, db.opponents, db.lineupTemplates, db.activities, db.sessionTemplates],
       async () => {
         await db.teams.clear();
         await db.players.clear();
@@ -77,6 +84,8 @@ export async function importBackup(file: File): Promise<{ success: boolean; erro
         await db.seasonBlocks.clear();
         await db.opponents.clear();
         await db.lineupTemplates.clear();
+        await db.activities.clear();
+        await db.sessionTemplates.clear();
 
         await db.teams.bulkAdd(data.teams);
         await db.players.bulkAdd(data.players);
@@ -85,8 +94,13 @@ export async function importBackup(file: File): Promise<{ success: boolean; erro
         await db.seasonBlocks.bulkAdd(data.seasonBlocks);
         if (data.opponents?.length) await db.opponents.bulkAdd(data.opponents);
         if (data.lineupTemplates?.length) await db.lineupTemplates.bulkAdd(data.lineupTemplates);
+        if (data.activities?.length) await db.activities.bulkAdd(data.activities);
+        if (data.sessionTemplates?.length) await db.sessionTemplates.bulkAdd(data.sessionTemplates);
       },
     );
+
+    // Re-seed built-ins if they were cleared (v1/v2 backups have no activities)
+    await seedBuiltInData();
 
     return { success: true };
   } catch {

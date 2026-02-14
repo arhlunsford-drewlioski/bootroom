@@ -97,6 +97,47 @@ export interface LineupTemplate {
 
 export type SessionType = 'technical' | 'tactical' | 'physical' | 'fitness' | 'recovery';
 
+export type ActivityCategory = 'warmup' | 'technical' | 'tactical' | 'physical'
+  | 'fitness' | 'recovery' | 'game-form' | 'set-pieces';
+
+export interface Activity {
+  id?: number;
+  name: string;
+  category: ActivityCategory;
+  suggestedDuration: number; // minutes
+  intensity: number; // 1-10
+  description: string;
+  isBuiltIn: boolean;
+  packId?: string;
+  isPremium?: boolean;
+}
+
+export interface SessionTemplateActivity {
+  activityId: number;
+  slot: 'warmup' | 'activity1' | 'activity2' | 'activity3' | 'activity4';
+}
+
+export interface SessionTemplate {
+  id?: number;
+  name: string;
+  sessionType: SessionType;
+  focus: string;
+  duration: number;
+  intensity: number;
+  activities: SessionTemplateActivity[];
+  unitTags?: string[];
+  phaseTags?: string[];
+  description?: string;
+  isBuiltIn: boolean;
+  packId?: string;
+  isPremium?: boolean;
+}
+
+export interface ActivityRef {
+  activityId: number;
+  activityName: string;
+}
+
 export interface Practice {
   id?: number;
   teamId: number;
@@ -118,6 +159,13 @@ export interface Practice {
   // Periodization enhancements
   intensity?: number; // 1-10 scale for workload tracking
   sessionType?: SessionType; // categorization for periodization
+  // Activity library references
+  warmupRef?: ActivityRef;
+  activity1Ref?: ActivityRef;
+  activity2Ref?: ActivityRef;
+  activity3Ref?: ActivityRef;
+  activity4Ref?: ActivityRef;
+  templateId?: number;
 }
 
 export interface PlayerEvaluation {
@@ -191,6 +239,8 @@ class BootroomDatabase extends Dexie {
   lineupTemplates!: Table<LineupTemplate>;
   playerEvaluations!: Table<PlayerEvaluation>;
   playerStats!: Table<PlayerStats>;
+  activities!: Table<Activity>;
+  sessionTemplates!: Table<SessionTemplate>;
 
   constructor() {
     super('BootroomDB');
@@ -256,6 +306,21 @@ class BootroomDatabase extends Dexie {
       lineupTemplates: '++id, teamId, matchId',
       playerEvaluations: '++id, playerId, teamId, date',
       playerStats: '++id, playerId, teamId, matchId, date'
+    });
+    // v7: adds activities and sessionTemplates tables
+    this.version(7).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      periodizationBlocks: '++id, teamId, type, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId',
+      playerEvaluations: '++id, playerId, teamId, date',
+      playerStats: '++id, playerId, teamId, matchId, date',
+      activities: '++id, category, isBuiltIn',
+      sessionTemplates: '++id, sessionType, isBuiltIn',
     });
   }
 }
