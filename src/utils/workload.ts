@@ -10,7 +10,7 @@ import type { Match, Practice } from '../db/database';
  * 5 Moderate   – 1 match + 2 practices
  * 6 Heavy      – 1 match + 3 practices
  * 7 Intense    – 2 matches + 1 practice
- * 8 Overload   – 2 matches + 3+ practices
+ * 8 Peak       – 2 matches + 3+ practices
  */
 export type WorkloadLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
@@ -91,7 +91,7 @@ const LEVEL_LABELS: Record<WorkloadLevel, string> = {
   5: 'Moderate',
   6: 'Heavy',
   7: 'Intense',
-  8: 'Overload',
+  8: 'Peak',
 };
 
 export function getWorkloadColor(level: WorkloadLevel): string {
@@ -108,5 +108,5 @@ export const WORKLOAD_LEGEND: { level: WorkloadLevel; color: string; label: stri
   { level: 3, color: LEVEL_COLORS[3], label: 'Optimal' },
   { level: 5, color: LEVEL_COLORS[5], label: 'Moderate' },
   { level: 6, color: LEVEL_COLORS[6], label: 'Heavy' },
-  { level: 8, color: LEVEL_COLORS[8], label: 'Overload' },
+  { level: 8, color: LEVEL_COLORS[8], label: 'Peak' },
 ];
