@@ -118,6 +118,9 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
           const heightPercent = maxWorkload > 0 ? (week.workload / maxWorkload) * 100 : 0;
           const color = getWorkloadColor(week.intensity);
 
+          // Ensure minimum visible height for bars with load
+          const displayHeight = week.workload > 0 ? Math.max(8, heightPercent) : 0;
+
           return (
             <div
               key={i}
@@ -125,23 +128,25 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
               title={`Week of ${week.label}\n${getWorkloadLabel(week.intensity)}\nLoad: ${Math.round(week.workload)}`}
             >
               {/* Bar */}
-              <div
-                className="w-full rounded-t transition-all duration-300 hover:opacity-80"
-                style={{
-                  height: `${Math.max(2, heightPercent)}%`,
-                  backgroundColor: color,
-                  background: week.workload > 0
-                    ? `linear-gradient(to top, ${color}, ${color}dd)`
-                    : color
-                }}
-              />
+              {week.workload > 0 && (
+                <div
+                  className="w-full rounded-t transition-all duration-300 hover:opacity-80"
+                  style={{
+                    height: `${displayHeight}%`,
+                    backgroundColor: color,
+                    background: `linear-gradient(to top, ${color}, ${color}dd)`
+                  }}
+                />
+              )}
 
               {/* Tooltip on hover */}
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-0 border border-surface-5 rounded px-2 py-1 text-[10px] text-txt whitespace-nowrap z-10 pointer-events-none">
-                <div className="font-semibold">{week.label}</div>
-                <div className="text-txt-muted">{getWorkloadLabel(week.intensity)}</div>
-                <div className="text-accent">{Math.round(week.workload)} load</div>
-              </div>
+              {week.workload > 0 && (
+                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-surface-0 border border-surface-5 rounded px-2 py-1 text-[10px] text-txt whitespace-nowrap z-10 pointer-events-none">
+                  <div className="font-semibold">{week.label}</div>
+                  <div className="text-txt-muted">{getWorkloadLabel(week.intensity)}</div>
+                  <div className="text-accent">{Math.round(week.workload)} load</div>
+                </div>
+              )}
             </div>
           );
         })}

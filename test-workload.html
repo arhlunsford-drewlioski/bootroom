@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Workload Bar Test</title>
+    <style>
+        .bar-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 1px;
+            height: 96px;
+            background: #1a2740;
+            border-radius: 8px;
+            padding: 8px;
+            min-width: 500px;
+        }
+        .bar {
+            flex: 1;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s;
+        }
+        .bar:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body style="background: #0c1421; padding: 20px; font-family: sans-serif; color: #e2e8f0;">
+    <h3>Workload Chart Color Test</h3>
+    <div class="bar-container">
+        <!-- Green (low load) -->
+        <div class="bar" style="height: 20%; background: linear-gradient(to top, #10b981, #10b981dd);"></div>
+        <!-- Yellow (medium load) -->
+        <div class="bar" style="height: 40%; background: linear-gradient(to top, #f59e0b, #f59e0bdd);"></div>
+        <!-- Orange (high load) -->
+        <div class="bar" style="height: 70%; background: linear-gradient(to top, #f97316, #f97316dd);"></div>
+        <!-- Red (peak load) -->
+        <div class="bar" style="height: 100%; background: linear-gradient(to top, #ef4444, #ef4444dd);"></div>
+    </div>
+    <p style="margin-top: 10px; color: #8899b0;">Hover over bars to see opacity effect</p>
+</body>
+</html>
