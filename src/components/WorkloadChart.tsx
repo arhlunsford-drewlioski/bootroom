@@ -81,7 +81,12 @@ export default function WorkloadChart({ matches, practices, scrollOffset }: Work
     weeksWithLoad: weeksWithLoad.length,
     maxWorkload,
     hasAnyWorkload,
-    sampleWeek: weeksWithLoad[0]
+    sampleWeek: weeksWithLoad[0],
+    totalMatches: matches.length,
+    totalPractices: practices.length,
+    practicesWithIntensity: practices.filter(p => p.intensity).length,
+    firstWeek: weekData[0],
+    lastWeek: weekData[weekData.length - 1]
   });
 
   function toDateStr(d: Date): string {

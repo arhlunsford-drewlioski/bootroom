@@ -63,7 +63,22 @@ export function calculateWeeklyWorkload(
     return total + calculatePracticeLoad(practice.intensity, duration);
   }, 0);
 
-  return matchLoad + practiceLoad;
+  const totalLoad = matchLoad + practiceLoad;
+
+  // Debug first week with data
+  if (totalLoad > 0 && Math.random() < 0.1) {
+    console.log('Week calculation sample:', {
+      weekStart: weekStartStr,
+      weekEnd: weekEndStr,
+      matchesInWeek: weekMatches.length,
+      practicesInWeek: weekPractices.length,
+      matchLoad,
+      practiceLoad,
+      totalLoad
+    });
+  }
+
+  return totalLoad;
 }
 
 /**
