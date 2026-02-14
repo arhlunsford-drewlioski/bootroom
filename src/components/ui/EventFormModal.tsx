@@ -126,6 +126,8 @@ export default function EventFormModal({
           date: dateStr,
           time,
           status: 'planned' as const,
+          intensity: 5,
+          duration: 90,
           ...(templateFields ? {
             sessionType: templateFields.sessionType,
             intensity: templateFields.intensity,

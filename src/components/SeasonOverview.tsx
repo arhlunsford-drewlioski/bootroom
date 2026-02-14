@@ -20,11 +20,13 @@ interface SeasonOverviewProps {
   teamId: number;
 }
 
+const ZOOM_OPTIONS = [1, 2, 3, 4, 5, 6] as const;
+
 export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
   const [editingBlock, setEditingBlock] = useState<Partial<PeriodizationBlock> | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [monthsToShow, setMonthsToShow] = useState(6);
 
-  // Manual data loading instead of useLiveQuery (which has reactivity issues)
   const [matches, setMatches] = useState<Match[]>([]);
   const [practices, setPractices] = useState<Practice[]>([]);
   const [periodizationBlocks, setPeriodizationBlocks] = useState<PeriodizationBlock[]>([]);
@@ -40,17 +42,10 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
         db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate'),
       ]);
 
-      console.log('✅ Manual data load complete:', {
-        matches: loadedMatches.length,
-        practices: loadedPractices.length,
-        blocks: loadedBlocks.length
-      });
-
       if (mounted) {
         setMatches(loadedMatches);
         setPractices(loadedPractices);
         setPeriodizationBlocks(loadedBlocks);
-        console.log('✅ State updated, component should re-render');
       }
     }
 
@@ -61,31 +56,19 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
     };
   }, [teamId]);
 
-  // Debug logging
-  console.log('SeasonOverview Debug:', {
-    teamId,
-    matchesLoaded: matches.length,
-    practicesLoaded: practices.length,
-    blocksLoaded: periodizationBlocks.length,
-    matchesSample: matches[0],
-    practicesSample: practices[0],
-    aboutToPassToWorkloadChart: {
-      matchesLength: matches.length,
-      practicesLength: practices.length
-    }
-  });
+  const scrollStep = Math.max(1, Math.floor(monthsToShow / 2));
 
-  // Generate 6 months of weeks starting from current month
+  // Generate weeks for the visible months
   const monthData = useMemo(() => {
     const today = new Date();
     const startMonth = new Date(today.getFullYear(), today.getMonth() + scrollOffset, 1);
-    const months: { label: string; startDate: string; weeks: { startDate: string; matchCount: number }[] }[] = [];
+    const months: { label: string; startDate: string; weeks: { startDate: string; matchCount: number; practiceCount: number }[] }[] = [];
 
-    for (let m = 0; m < 6; m++) {
+    for (let m = 0; m < monthsToShow; m++) {
       const monthDate = new Date(startMonth.getFullYear(), startMonth.getMonth() + m, 1);
       const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
-      const weeks: { startDate: string; matchCount: number }[] = [];
+      const weeks: { startDate: string; matchCount: number; practiceCount: number }[] = [];
       const firstDay = new Date(monthDate);
       const dayOfWeek = firstDay.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -101,11 +84,15 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
         weekEnd.setDate(weekEnd.getDate() + 6);
         const weekEndStr = toDateStr(weekEnd);
 
-        const matchCount = matches.filter(match => {
-          return match.date >= weekStartStr && match.date <= weekEndStr;
-        }).length;
+        const matchCount = matches.filter(match =>
+          match.date >= weekStartStr && match.date <= weekEndStr
+        ).length;
 
-        weeks.push({ startDate: weekStartStr, matchCount });
+        const practiceCount = practices.filter(practice =>
+          practice.date >= weekStartStr && practice.date <= weekEndStr
+        ).length;
+
+        weeks.push({ startDate: weekStartStr, matchCount, practiceCount });
         current.setDate(current.getDate() + 7);
       }
 
@@ -113,7 +100,7 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
     }
 
     return months;
-  }, [scrollOffset, matches]);
+  }, [scrollOffset, matches, practices, monthsToShow]);
 
   const allWeeks = monthData.flatMap(m => m.weeks);
   const totalWeeks = allWeeks.length;
@@ -212,23 +199,43 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
   }
 
   const maxMatchCount = Math.max(1, ...allWeeks.map(w => w.matchCount));
+  const maxPracticeCount = Math.max(1, ...allWeeks.map(w => w.practiceCount));
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
         <h2 className="text-lg font-semibold text-txt">Season Overview</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setScrollOffset(o => o - 3)}>
-            &larr; Earlier
-          </Button>
-          {scrollOffset !== 0 && (
-            <Button variant="ghost" onClick={() => setScrollOffset(0)}>
-              Today
+        <div className="flex items-center gap-3">
+          {/* Zoom selector */}
+          <div className="flex items-center gap-1 bg-surface-2 rounded-md p-0.5 border border-surface-5">
+            {ZOOM_OPTIONS.map(n => (
+              <button
+                key={n}
+                onClick={() => setMonthsToShow(n)}
+                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  monthsToShow === n
+                    ? 'bg-accent text-surface-0'
+                    : 'text-txt-muted hover:text-txt hover:bg-surface-3'
+                }`}
+              >
+                {n}M
+              </button>
+            ))}
+          </div>
+          {/* Navigation */}
+          <div className="flex items-center gap-1">
+            <Button variant="secondary" onClick={() => setScrollOffset(o => o - scrollStep)}>
+              &larr;
             </Button>
-          )}
-          <Button variant="secondary" onClick={() => setScrollOffset(o => o + 3)}>
-            Later &rarr;
-          </Button>
+            {scrollOffset !== 0 && (
+              <Button variant="ghost" onClick={() => setScrollOffset(0)}>
+                Today
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setScrollOffset(o => o + scrollStep)}>
+              &rarr;
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -403,10 +410,27 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
           ))}
         </div>
         <div className="text-[9px] text-txt-faint mt-1">Game density</div>
+
+        {/* Practice density */}
+        <div className="flex items-end gap-px h-8 pt-2 min-w-[500px]">
+          {allWeeks.map((week, i) => (
+            <div
+              key={i}
+              className="flex-1 flex flex-col items-center"
+              title={`Week of ${week.startDate}: ${week.practiceCount} practice${week.practiceCount !== 1 ? 's' : ''}`}
+            >
+              <div
+                className="w-full rounded-sm bg-practice/60"
+                style={{ height: week.practiceCount > 0 ? `${Math.max(4, (week.practiceCount / maxPracticeCount) * 24)}px` : '0px' }}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="text-[9px] text-txt-faint mt-1">Practice density</div>
       </Card>
 
       {/* Workload Chart */}
-      <WorkloadChart matches={matches} practices={practices} scrollOffset={scrollOffset} />
+      <WorkloadChart matches={matches} practices={practices} scrollOffset={scrollOffset} monthsToShow={monthsToShow} />
 
       {/* Block list + editor */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
