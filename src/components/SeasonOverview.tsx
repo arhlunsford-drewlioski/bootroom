@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import type { SeasonBlock, PeriodizationBlock, PeriodizationRowType } from '../db/database';
+import type { SeasonBlock, PeriodizationBlock, PeriodizationRowType, Match, Practice } from '../db/database';
 import { SEASON_BLOCK_LABELS, SEASON_BLOCK_COLORS } from '../constants/tags';
 import {
   TRAINING_PHASES,
@@ -24,27 +23,34 @@ interface SeasonOverviewProps {
 export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
   const [editingBlock, setEditingBlock] = useState<Partial<PeriodizationBlock> | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Force refresh on mount to fix useLiveQuery issue
+  // Manual data loading instead of useLiveQuery (which has reactivity issues)
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [practices, setPractices] = useState<Practice[]>([]);
+  const [periodizationBlocks, setPeriodizationBlocks] = useState<PeriodizationBlock[]>([]);
+
+  // Load data on mount and when teamId changes
   useEffect(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
+    async function loadData() {
+      const [loadedMatches, loadedPractices, loadedBlocks] = await Promise.all([
+        db.matches.where('teamId').equals(teamId).toArray(),
+        db.practices.where('teamId').equals(teamId).toArray(),
+        db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate'),
+      ]);
 
-  const periodizationBlocks = useLiveQuery(
-    () => db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate'),
-    [teamId, refreshKey],
-  ) ?? [];
+      console.log('✅ Manual data load complete:', {
+        matches: loadedMatches.length,
+        practices: loadedPractices.length,
+        blocks: loadedBlocks.length
+      });
 
-  const matches = useLiveQuery(
-    () => db.matches.where('teamId').equals(teamId).toArray(),
-    [teamId, refreshKey],
-  ) ?? [];
+      setMatches(loadedMatches);
+      setPractices(loadedPractices);
+      setPeriodizationBlocks(loadedBlocks);
+    }
 
-  const practices = useLiveQuery(
-    () => db.practices.where('teamId').equals(teamId).toArray(),
-    [teamId, refreshKey],
-  ) ?? [];
+    loadData();
+  }, [teamId]);
 
   // Debug logging
   console.log('SeasonOverview Debug:', {
@@ -180,11 +186,19 @@ export default function SeasonOverview({ teamId }: SeasonOverviewProps) {
     } else {
       await db.periodizationBlocks.add(blockData);
     }
+
+    // Reload blocks after save
+    const loadedBlocks = await db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate');
+    setPeriodizationBlocks(loadedBlocks);
     setEditingBlock(null);
   }
 
   async function deleteBlock(id: number) {
     await db.periodizationBlocks.delete(id);
+
+    // Reload blocks after delete
+    const loadedBlocks = await db.periodizationBlocks.where('teamId').equals(teamId).sortBy('startDate');
+    setPeriodizationBlocks(loadedBlocks);
     if (editingBlock?.id === id) setEditingBlock(null);
   }
 
