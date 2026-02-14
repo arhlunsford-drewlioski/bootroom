@@ -19,7 +19,7 @@ export interface FormationTemplate {
 const TIER_ORDER: Tier[] = ['GK', 'DEF', 'DMID', 'MID', 'AMID', 'FWD'];
 
 // ─── GK baseline shared by every formation ───
-const GK: PositionSlot = { id: 'GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+const GK: PositionSlot = { id: 'GK', label: 'GK', tier: 'GK', x: 50, y: 8 };
 
 // ─── Common back-4 ───
 const BACK4: PositionSlot[] = [
@@ -257,7 +257,7 @@ export const DEFAULT_FORMATION_ID = '4-2-3-1';
 // 9v9 Formations (9 slots each, incl. GK)
 // ═══════════════════════════════════════════════════════
 
-const GK_9: PositionSlot = { id: '9v9-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+const GK_9: PositionSlot = { id: '9v9-GK', label: 'GK', tier: 'GK', x: 50, y: 8 };
 
 const FORMATIONS_9V9: FormationTemplate[] = [
   {
@@ -341,7 +341,7 @@ const FORMATIONS_9V9: FormationTemplate[] = [
 // 7v7 Formations (7 slots each, incl. GK)
 // ═══════════════════════════════════════════════════════
 
-const GK_7: PositionSlot = { id: '7v7-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+const GK_7: PositionSlot = { id: '7v7-GK', label: 'GK', tier: 'GK', x: 50, y: 8 };
 
 const FORMATIONS_7V7: FormationTemplate[] = [
   {
@@ -402,7 +402,7 @@ const FORMATIONS_7V7: FormationTemplate[] = [
 // 5v5 Formations (5 slots each, incl. GK)
 // ═══════════════════════════════════════════════════════
 
-const GK_5: PositionSlot = { id: '5v5-GK', label: 'GK', tier: 'GK', x: 50, y: 5 };
+const GK_5: PositionSlot = { id: '5v5-GK', label: 'GK', tier: 'GK', x: 50, y: 8 };
 
 const FORMATIONS_5V5: FormationTemplate[] = [
   {
@@ -444,11 +444,13 @@ const FORMATIONS_5V5: FormationTemplate[] = [
 // Format-keyed lookup + helpers
 // ═══════════════════════════════════════════════════════
 
+const BLANK: FormationTemplate = { id: 'blank', name: 'Blank', slots: [] };
+
 export const FORMATIONS_BY_FORMAT: Record<GameFormat, FormationTemplate[]> = {
-  '11v11': FORMATIONS,
-  '9v9': FORMATIONS_9V9,
-  '7v7': FORMATIONS_7V7,
-  '5v5': FORMATIONS_5V5,
+  '11v11': [BLANK, ...FORMATIONS],
+  '9v9': [BLANK, ...FORMATIONS_9V9],
+  '7v7': [BLANK, ...FORMATIONS_7V7],
+  '5v5': [BLANK, ...FORMATIONS_5V5],
 };
 
 export const FORMAT_SLOT_COUNT: Record<GameFormat, number> = {
@@ -459,10 +461,10 @@ export const FORMAT_SLOT_COUNT: Record<GameFormat, number> = {
 };
 
 export const DEFAULT_FORMATION_FOR_FORMAT: Record<GameFormat, string> = {
-  '11v11': '4-2-3-1',
-  '9v9': '9v9-3-3-2',
-  '7v7': '7v7-2-3-1',
-  '5v5': '5v5-2-1-1',
+  '11v11': 'blank',
+  '9v9': 'blank',
+  '7v7': 'blank',
+  '5v5': 'blank',
 };
 
 export function getFormationsForFormat(format: GameFormat): FormationTemplate[] {
@@ -480,6 +482,16 @@ export function getFormation(id: string): FormationTemplate | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+/** Derive a tier from a freeform y-coordinate (data coords: 0=own goal, 100=opponent) */
+export function tierFromY(y: number): Tier {
+  if (y < 15) return 'GK';
+  if (y < 35) return 'DEF';
+  if (y < 45) return 'DMID';
+  if (y < 60) return 'MID';
+  if (y < 75) return 'AMID';
+  return 'FWD';
 }
 
 export function detectFormation(filledSlots: PositionSlot[]): string {

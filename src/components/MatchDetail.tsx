@@ -121,6 +121,8 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
       lineup: template.positions,
       bench: template.bench ?? [],
       formation: template.formation,
+      defensiveLine: template.defensiveLine,
+      pressingLine: template.pressingLine,
     });
     setShowTemplatePicker(false);
     setTemplateFlash(template.name);
@@ -138,6 +140,8 @@ export default function MatchDetail({ matchId, onClose, onOpenLineup }: MatchDet
       positions: match.lineup,
       bench: match.bench,
       matchId: match.id,
+      defensiveLine: match.defensiveLine,
+      pressingLine: match.pressingLine,
       createdAt: new Date().toISOString(),
     });
     setTemplateFlash('Saved as template');

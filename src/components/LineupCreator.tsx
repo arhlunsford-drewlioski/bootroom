@@ -4,7 +4,7 @@ import { db } from '../db/database';
 import type { Player, LineupEntry, LineupTemplate } from '../db/database';
 import { posthog } from '../analytics';
 import SoccerField from './SoccerField';
-import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT, getDetectionThreshold, getFormation, detectFormation } from './formations';
+import { getFormationsForFormat, DEFAULT_FORMATION_FOR_FORMAT, FORMAT_SLOT_COUNT, getDetectionThreshold, getFormation, detectFormation, tierFromY } from './formations';
 import type { PositionSlot } from './formations';
 import { OPPONENT_TRAITS } from '../constants/tags';
 import { compareLineups } from '../utils/lineup-diff';
@@ -90,6 +90,17 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   // Highlight
   const [highlightSlotId, setHighlightSlotId] = useState<string | null>(null);
 
+  // Freeform positions & labels
+  const [freeformPositions, setFreeformPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [freeformLabels, setFreeformLabels] = useState<Record<string, string>>({});
+  const freeformCounter = useRef(0);
+  const [highlightDropPos, setHighlightDropPos] = useState<{ x: number; y: number } | null>(null);
+
+  // Tactical lines
+  const [defensiveLine, setDefensiveLine] = useState<number | undefined>(undefined);
+  const [pressingLine, setPressingLine] = useState<number | undefined>(undefined);
+  const [showTacticalLines, setShowTacticalLines] = useState(false);
+
   // Drawer state (open by default so roster is visible)
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [drawerTab, setDrawerTab] = useState<'roster' | 'bench' | 'details'>('roster');
@@ -138,8 +149,52 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     String(p.jerseyNumber).includes(rosterFilter),
   );
 
-  const filledSlots = formation.slots.filter(s => assignments[s.id] != null);
-  const detectedFormation = filledSlots.length >= detectionThreshold ? detectFormation(filledSlots) : null;
+  // Resolve positions: freeform overrides > formation slot coords
+  const resolvedPositions = useMemo(() => {
+    const result: Record<string, { x: number; y: number }> = {};
+    for (const slotId of Object.keys(assignments)) {
+      if (freeformPositions[slotId]) {
+        result[slotId] = freeformPositions[slotId];
+      } else {
+        const slot = formation.slots.find(s => s.id === slotId);
+        if (slot) result[slotId] = { x: slot.x, y: slot.y };
+      }
+    }
+    return result;
+  }, [assignments, freeformPositions, formation.slots]);
+
+  // Resolve labels: freeform labels > formation slot labels
+  const resolvedLabels = useMemo(() => {
+    const result: Record<string, string> = {};
+    for (const slotId of Object.keys(assignments)) {
+      if (freeformLabels[slotId]) {
+        result[slotId] = freeformLabels[slotId];
+      } else {
+        const slot = formation.slots.find(s => s.id === slotId);
+        if (slot) result[slotId] = slot.label;
+      }
+    }
+    return result;
+  }, [assignments, freeformLabels, formation.slots]);
+
+  // Build virtual PositionSlots for all assigned players (formation + freeform) for detection
+  const allFilledSlots: PositionSlot[] = useMemo(() => {
+    return Object.keys(assignments).map(slotId => {
+      const formationSlot = formation.slots.find(s => s.id === slotId);
+      if (formationSlot) return formationSlot;
+      const pos = freeformPositions[slotId];
+      const label = freeformLabels[slotId] ?? '';
+      return {
+        id: slotId,
+        label,
+        tier: pos ? tierFromY(pos.y) : 'MID' as const,
+        x: pos?.x ?? 50,
+        y: pos?.y ?? 50,
+      };
+    });
+  }, [assignments, formation.slots, freeformPositions, freeformLabels]);
+
+  const detectedFormation = allFilledSlots.length >= detectionThreshold ? detectFormation(allFilledSlots) : null;
 
   // Build roleTags Record (merge player defaults + per-match overrides)
   const roleTags = useMemo(() => {
@@ -173,8 +228,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     const currentLineup: LineupEntry[] = Object.entries(assignments).map(
       ([slotId, playerId]) => ({ slotId, playerId }),
     );
-    return compareLineups(currentLineup, prevMatch.lineup!, formation.slots, prevSlots);
-  }, [selectedMatchId, assignments, matches, formation.slots, slotCount]);
+    return compareLineups(currentLineup, prevMatch.lineup!, allFilledSlots, prevSlots);
+  }, [selectedMatchId, assignments, matches, allFilledSlots, slotCount]);
 
   function loadMatch(matchId: number | null) {
     setSelectedMatchId(matchId);
@@ -183,6 +238,9 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
       setAssignments({}); setBench([]); setFormationId(defaultFormationId);
       setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
+      setFreeformPositions({}); setFreeformLabels({});
+      setDefensiveLine(undefined); setPressingLine(undefined); setShowTacticalLines(false);
+      freeformCounter.current = 0;
       setShowMatchForm(true);
       return;
     }
@@ -202,13 +260,32 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     }
     const newAssignments: Record<string, number> = {};
     const newRoleOverrides: Record<string, string> = {};
+    const newFreeformPositions: Record<string, { x: number; y: number }> = {};
+    const newFreeformLabels: Record<string, string> = {};
+    let maxFreeCounter = 0;
     for (const entry of match.lineup ?? []) {
       newAssignments[entry.slotId] = entry.playerId;
       if (entry.roleTag) newRoleOverrides[entry.slotId] = entry.roleTag;
+      if (entry.x != null && entry.y != null) {
+        newFreeformPositions[entry.slotId] = { x: entry.x, y: entry.y };
+      }
+      if (entry.label) {
+        newFreeformLabels[entry.slotId] = entry.label;
+      }
+      if (entry.slotId.startsWith('free-')) {
+        const num = parseInt(entry.slotId.slice(5), 10);
+        if (!isNaN(num) && num >= maxFreeCounter) maxFreeCounter = num + 1;
+      }
     }
+    freeformCounter.current = maxFreeCounter;
     setAssignments(newAssignments);
     setRoleOverrides(newRoleOverrides);
+    setFreeformPositions(newFreeformPositions);
+    setFreeformLabels(newFreeformLabels);
     setOpponentTraits(match.opponentTraits ?? []);
+    setDefensiveLine(match.defensiveLine);
+    setPressingLine(match.pressingLine);
+    setShowTacticalLines(match.defensiveLine != null || match.pressingLine != null);
     setEditingRoleSlotId(null);
     setShowMatchForm(false);
   }
@@ -224,13 +301,32 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     }
     const newAssignments: Record<string, number> = {};
     const newRoleOverrides: Record<string, string> = {};
+    const newFreeformPositions: Record<string, { x: number; y: number }> = {};
+    const newFreeformLabels: Record<string, string> = {};
+    let maxFreeCounter = 0;
     for (const entry of template.positions ?? []) {
       newAssignments[entry.slotId] = entry.playerId;
       if (entry.roleTag) newRoleOverrides[entry.slotId] = entry.roleTag;
+      if (entry.x != null && entry.y != null) {
+        newFreeformPositions[entry.slotId] = { x: entry.x, y: entry.y };
+      }
+      if (entry.label) {
+        newFreeformLabels[entry.slotId] = entry.label;
+      }
+      if (entry.slotId.startsWith('free-')) {
+        const num = parseInt(entry.slotId.slice(5), 10);
+        if (!isNaN(num) && num >= maxFreeCounter) maxFreeCounter = num + 1;
+      }
     }
+    freeformCounter.current = maxFreeCounter;
     setAssignments(newAssignments);
     setRoleOverrides(newRoleOverrides);
+    setFreeformPositions(newFreeformPositions);
+    setFreeformLabels(newFreeformLabels);
     setBench(template.bench ?? []);
+    setDefensiveLine(template.defensiveLine);
+    setPressingLine(template.pressingLine);
+    setShowTacticalLines(template.defensiveLine != null || template.pressingLine != null);
     setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
     setOpponentTraits([]);
     setEditingRoleSlotId(null);
@@ -245,6 +341,9 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     setOpponent(''); setMatchDate(''); setMatchTime(''); setLocation('');
     setAssignments({}); setBench([]); setFormationId(defaultFormationId);
     setRoleOverrides({}); setOpponentTraits([]); setEditingRoleSlotId(null);
+    setFreeformPositions({}); setFreeformLabels({});
+    setDefensiveLine(undefined); setPressingLine(undefined); setShowTacticalLines(false);
+    freeformCounter.current = 0;
     setShowMatchForm(false);
     setMode('builder');
   }
@@ -252,21 +351,47 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   function changeFormation(newId: string) {
     const newFormation = getFormation(newId);
     if (!newFormation) return;
-    const validSlotIds = new Set(newFormation.slots.map(s => s.id));
-    setAssignments(prev => {
-      const next: Record<string, number> = {};
-      for (const [slotId, playerId] of Object.entries(prev)) {
-        if (validSlotIds.has(slotId)) next[slotId] = playerId;
+    const newSlotIds = new Set(newFormation.slots.map(s => s.id));
+
+    const nextAssignments: Record<string, number> = {};
+    const nextFreeformPositions = { ...freeformPositions };
+    const nextFreeformLabels = { ...freeformLabels };
+    const nextRoleOverrides: Record<string, string> = {};
+
+    for (const [slotId, playerId] of Object.entries(assignments)) {
+      if (newSlotIds.has(slotId)) {
+        // Slot exists in new formation — keep it
+        nextAssignments[slotId] = playerId;
+        if (roleOverrides[slotId]) nextRoleOverrides[slotId] = roleOverrides[slotId];
+      } else if (freeformPositions[slotId]) {
+        // Already freeform — keep as-is
+        nextAssignments[slotId] = playerId;
+        if (roleOverrides[slotId]) nextRoleOverrides[slotId] = roleOverrides[slotId];
+      } else {
+        // Was a formation slot that no longer exists — convert to freeform at old coords
+        const oldSlot = formation.slots.find(s => s.id === slotId);
+        if (oldSlot) {
+          const freeId = `free-${freeformCounter.current++}`;
+          nextAssignments[freeId] = playerId;
+          nextFreeformPositions[freeId] = { x: oldSlot.x, y: oldSlot.y };
+          nextFreeformLabels[freeId] = oldSlot.label;
+          if (roleOverrides[slotId]) nextRoleOverrides[freeId] = roleOverrides[slotId];
+        }
       }
-      return next;
-    });
-    setRoleOverrides(prev => {
-      const next: Record<string, string> = {};
-      for (const [slotId, role] of Object.entries(prev)) {
-        if (validSlotIds.has(slotId)) next[slotId] = role;
+    }
+
+    // Clean up freeform data for slots that are no longer assigned
+    for (const slotId of Object.keys(nextFreeformPositions)) {
+      if (!(slotId in nextAssignments)) {
+        delete nextFreeformPositions[slotId];
+        delete nextFreeformLabels[slotId];
       }
-      return next;
-    });
+    }
+
+    setAssignments(nextAssignments);
+    setFreeformPositions(nextFreeformPositions);
+    setFreeformLabels(nextFreeformLabels);
+    setRoleOverrides(nextRoleOverrides);
     setFormationId(newId);
   }
 
@@ -299,28 +424,40 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   async function saveLineup() {
     if (!team?.id) return;
     const lineupEntries: LineupEntry[] = Object.entries(assignments).map(
-      ([slotId, playerId]) => ({ slotId, playerId, roleTag: roleOverrides[slotId] || undefined }),
+      ([slotId, playerId]) => {
+        const entry: LineupEntry = { slotId, playerId, roleTag: roleOverrides[slotId] || undefined };
+        const fp = freeformPositions[slotId];
+        if (fp) {
+          entry.x = Math.round(fp.x * 10) / 10;
+          entry.y = Math.round(fp.y * 10) / 10;
+        }
+        if (freeformLabels[slotId]) {
+          entry.label = freeformLabels[slotId];
+        }
+        return entry;
+      },
     );
-    const detected = detectFormation(formation.slots.filter(s => assignments[s.id] != null));
+    const detected = detectedFormation;
 
     if (selectedMatchId) {
-      // Saving a match lineup
       await db.matches.update(selectedMatchId, {
         opponent, date: matchDate, time: matchTime, location: location || undefined,
         lineup: lineupEntries, bench, formation: detected || formationId,
         opponentTraits: opponentTraits.length > 0 ? opponentTraits : undefined,
+        defensiveLine: showTacticalLines ? defensiveLine : undefined,
+        pressingLine: showTacticalLines ? pressingLine : undefined,
       });
       posthog.capture('lineup_saved');
     } else if (editingTemplateId) {
-      // Updating existing template
       await db.lineupTemplates.update(editingTemplateId, {
         name: templateName || `${detected || formationId} Template`,
         formation: detected || formationId,
         positions: lineupEntries,
         bench,
+        defensiveLine: showTacticalLines ? defensiveLine : undefined,
+        pressingLine: showTacticalLines ? pressingLine : undefined,
       });
     } else if (templateName || Object.keys(assignments).length > 0) {
-      // Creating new template
       const name = templateName || `${detected || formationId} Template`;
       const id = await db.lineupTemplates.add({
         teamId: team.id,
@@ -328,6 +465,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
         formation: detected || formationId,
         positions: lineupEntries,
         bench,
+        defensiveLine: showTacticalLines ? defensiveLine : undefined,
+        pressingLine: showTacticalLines ? pressingLine : undefined,
         createdAt: new Date().toISOString(),
       });
       setEditingTemplateId(id as number);
@@ -340,9 +479,18 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   async function saveMatchLineupAsTemplate() {
     if (!team?.id || !selectedMatchId) return;
     const lineupEntries: LineupEntry[] = Object.entries(assignments).map(
-      ([slotId, playerId]) => ({ slotId, playerId, roleTag: roleOverrides[slotId] || undefined }),
+      ([slotId, playerId]) => {
+        const entry: LineupEntry = { slotId, playerId, roleTag: roleOverrides[slotId] || undefined };
+        const fp = freeformPositions[slotId];
+        if (fp) {
+          entry.x = Math.round(fp.x * 10) / 10;
+          entry.y = Math.round(fp.y * 10) / 10;
+        }
+        if (freeformLabels[slotId]) entry.label = freeformLabels[slotId];
+        return entry;
+      },
     );
-    const detected = detectFormation(formation.slots.filter(s => assignments[s.id] != null));
+    const detected = detectedFormation;
     const name = `${opponent} ${matchDate} (${detected || formationId})`;
     await db.lineupTemplates.add({
       teamId: team.id,
@@ -351,6 +499,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       positions: lineupEntries,
       bench,
       matchId: selectedMatchId,
+      defensiveLine: showTacticalLines ? defensiveLine : undefined,
+      pressingLine: showTacticalLines ? pressingLine : undefined,
       createdAt: new Date().toISOString(),
     });
     setSaveFlash(true);
@@ -376,8 +526,17 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       if (Math.hypot(dx, dy) > 8) setIsDragging(true);
     }
     if (isDragging) {
-      const slotId = hitTestSlot(pos.x, pos.y);
-      setHighlightSlotId(slotId);
+      const result = hitTestField(pos.x, pos.y);
+      if (result?.type === 'slot') {
+        setHighlightSlotId(result.slotId);
+        setHighlightDropPos(null);
+      } else if (result?.type === 'freeform') {
+        setHighlightSlotId(null);
+        setHighlightDropPos({ x: result.x, y: result.y });
+      } else {
+        setHighlightSlotId(null);
+        setHighlightDropPos(null);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragPlayerId, isDragging]);
@@ -385,13 +544,20 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   const handlePointerUp = useCallback(() => {
     if (dragPlayerId == null) return;
     if (isDragging && dragPos) {
-      const target = hitTestDrop(dragPos.x, dragPos.y);
-      if (target === 'slot' && highlightSlotId) dropOnSlot(highlightSlotId);
-      else if (target === 'bench') dropOnBench();
-      else if (target === 'roster') dropOnRoster();
+      const fieldResult = hitTestField(dragPos.x, dragPos.y);
+      if (fieldResult?.type === 'slot') {
+        dropOnSlot(fieldResult.slotId);
+      } else if (fieldResult?.type === 'freeform') {
+        dropOnFreeform(fieldResult.x, fieldResult.y);
+      } else {
+        const zone = hitTestDropZone(dragPos.x, dragPos.y);
+        if (zone === 'bench') dropOnBench();
+        else if (zone === 'roster') dropOnRoster();
+      }
     }
     setDragPlayerId(null); setDragOrigin(null); setDragOriginSlotId(null);
-    setDragPos(null); setIsDragging(false); setHighlightSlotId(null);
+    setDragPos(null); setIsDragging(false);
+    setHighlightSlotId(null); setHighlightDropPos(null);
     dragStartPos.current = null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragPlayerId, isDragging, dragPos, highlightSlotId]);
@@ -406,11 +572,24 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
         const dy = pos.y - dragStartPos.current.y;
         if (Math.hypot(dx, dy) > 8) setIsDragging(true);
       }
-      if (isDragging) setHighlightSlotId(hitTestSlot(pos.x, pos.y));
+      if (isDragging) {
+        const result = hitTestField(pos.x, pos.y);
+        if (result?.type === 'slot') {
+          setHighlightSlotId(result.slotId);
+          setHighlightDropPos(null);
+        } else if (result?.type === 'freeform') {
+          setHighlightSlotId(null);
+          setHighlightDropPos({ x: result.x, y: result.y });
+        } else {
+          setHighlightSlotId(null);
+          setHighlightDropPos(null);
+        }
+      }
     };
     const onUp = () => {
       setDragPlayerId(null); setDragOrigin(null); setDragOriginSlotId(null);
-      setDragPos(null); setIsDragging(false); setHighlightSlotId(null);
+      setDragPos(null); setIsDragging(false);
+      setHighlightSlotId(null); setHighlightDropPos(null);
       dragStartPos.current = null;
     };
     window.addEventListener('pointermove', onMove);
@@ -419,28 +598,32 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragPlayerId, isDragging]);
 
-  function hitTestSlot(clientX: number, clientY: number): string | null {
+  type HitTestResult =
+    | { type: 'slot'; slotId: string }
+    | { type: 'freeform'; x: number; y: number }
+    | null;
+
+  function hitTestField(clientX: number, clientY: number): HitTestResult {
     const svg = fieldRef.current;
     if (!svg) return null;
     const rect = svg.getBoundingClientRect();
     if (clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) return null;
     const pctX = ((clientX - rect.left) / rect.width) * 100;
     const pctY = (1 - (clientY - rect.top) / rect.height) * 100;
+
+    // Check formation slots first (snap zone = 8 units)
     let closest: { slotId: string; dist: number } | null = null;
     for (const slot of formation.slots) {
       const dist = Math.hypot(slot.x - pctX, slot.y - pctY);
-      if (dist < 10 && (!closest || dist < closest.dist)) closest = { slotId: slot.id, dist };
+      if (dist < 8 && (!closest || dist < closest.dist)) closest = { slotId: slot.id, dist };
     }
-    return closest?.slotId ?? null;
+    if (closest) return { type: 'slot', slotId: closest.slotId };
+
+    // Freeform: anywhere on the field
+    return { type: 'freeform', x: pctX, y: pctY };
   }
 
-  function hitTestDrop(clientX: number, clientY: number): 'slot' | 'bench' | 'roster' | null {
-    if (hitTestSlot(clientX, clientY)) return 'slot';
-    const svg = fieldRef.current;
-    if (svg) {
-      const r = svg.getBoundingClientRect();
-      if (clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom) return null;
-    }
+  function hitTestDropZone(clientX: number, clientY: number): 'bench' | 'roster' | null {
     const benchEl = benchRef.current;
     if (benchEl) {
       const r = benchEl.getBoundingClientRect();
@@ -467,6 +650,54 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
       next[targetSlotId] = pid;
       return next;
     });
+    // Clean up freeform data if dropping onto a formation slot
+    if (dragOrigin === 'field' && dragOriginSlotId) {
+      setFreeformPositions(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+      setFreeformLabels(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+    }
+    if (dragOrigin === 'bench') setBench(b => b.filter(id => id !== pid));
+  }
+
+  function dropOnFreeform(x: number, y: number) {
+    if (dragPlayerId == null) return;
+    const pid = dragPlayerId;
+    const newSlotId = `free-${freeformCounter.current++}`;
+
+    // Determine label: carry from previous slot
+    let label = '';
+    if (dragOrigin === 'field' && dragOriginSlotId) {
+      label = freeformLabels[dragOriginSlotId] ?? formation.slots.find(s => s.id === dragOriginSlotId)?.label ?? '';
+    }
+
+    setAssignments(prev => {
+      const next = { ...prev };
+      if (dragOrigin === 'field' && dragOriginSlotId) {
+        delete next[dragOriginSlotId];
+      }
+      next[newSlotId] = pid;
+      return next;
+    });
+    setFreeformPositions(prev => {
+      const next = { ...prev };
+      if (dragOriginSlotId) delete next[dragOriginSlotId];
+      next[newSlotId] = { x, y };
+      return next;
+    });
+    setFreeformLabels(prev => {
+      const next = { ...prev };
+      if (dragOriginSlotId) delete next[dragOriginSlotId];
+      if (label) next[newSlotId] = label;
+      return next;
+    });
+    if (roleOverrides[dragOriginSlotId ?? '']) {
+      setRoleOverrides(prev => {
+        const next = { ...prev };
+        const old = dragOriginSlotId ? next[dragOriginSlotId] : undefined;
+        if (dragOriginSlotId) delete next[dragOriginSlotId];
+        if (old) next[newSlotId] = old;
+        return next;
+      });
+    }
     if (dragOrigin === 'bench') setBench(b => b.filter(id => id !== pid));
   }
 
@@ -475,6 +706,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     const pid = dragPlayerId;
     if (dragOrigin === 'field' && dragOriginSlotId) {
       setAssignments(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+      setFreeformPositions(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+      setFreeformLabels(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
     }
     setBench(prev => prev.includes(pid) ? prev : [...prev, pid]);
   }
@@ -484,6 +717,8 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
     const pid = dragPlayerId;
     if (dragOrigin === 'field' && dragOriginSlotId) {
       setAssignments(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+      setFreeformPositions(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
+      setFreeformLabels(prev => { const n = { ...prev }; delete n[dragOriginSlotId!]; return n; });
     }
     if (dragOrigin === 'bench') setBench(prev => prev.filter(id => id !== pid));
   }
@@ -496,10 +731,23 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
   function handleSlotClick(slotId: string) {
     if (pendingAssignPlayerId != null) {
       const pid = pendingAssignPlayerId;
+      // If clicking the same slot the pending player is already in, just deselect
+      if (assignments[slotId] === pid) {
+        setPendingAssignPlayerId(null);
+        return;
+      }
       setBench(prev => prev.filter(id => id !== pid));
+      // Remove player from any previous slot (including freeform cleanup)
       setAssignments(prev => {
         const next = { ...prev };
-        for (const [sid, id] of Object.entries(next)) { if (id === pid) delete next[sid]; }
+        for (const [sid, id] of Object.entries(next)) {
+          if (id === pid) {
+            delete next[sid];
+            // Clean up freeform data for old slot
+            setFreeformPositions(fp => { const n = { ...fp }; delete n[sid]; return n; });
+            setFreeformLabels(fl => { const n = { ...fl }; delete n[sid]; return n; });
+          }
+        }
         next[slotId] = pid;
         return next;
       });
@@ -726,6 +974,18 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
             <span className="hidden sm:inline">Squad</span>
           </button>
 
+          <button
+            onClick={() => {
+              const next = !showTacticalLines;
+              setShowTacticalLines(next);
+              if (next && defensiveLine == null) setDefensiveLine(30);
+              if (next && pressingLine == null) setPressingLine(65);
+            }}
+            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${showTacticalLines ? 'bg-accent/15 text-accent border-accent/40 font-semibold' : 'text-txt-faint border-surface-5 hover:text-txt hover:border-accent/30'}`}
+          >
+            Tactical Lines
+          </button>
+
           {isMatchMode && selectedMatchId && (
             <button
               onClick={saveMatchLineupAsTemplate}
@@ -827,20 +1087,26 @@ export default function LineupCreator({ initialMatchId, onBackToMatch }: LineupC
           <div className="bg-surface-1 rounded-lg border border-surface-5 p-2 sm:p-3">
             <SoccerField
               formation={formation} assignments={assignments} players={players}
+              positions={resolvedPositions} labels={resolvedLabels}
               detectedFormation={detectedFormation} highlightSlotId={highlightSlotId}
               onSlotPointerDown={handleSlotPointerDown} onSlotClick={handleSlotClick}
               onSlotDoubleClick={handleSlotDoubleClick} pendingAssign={pendingAssignPlayerId != null}
               fieldRef={fieldRef} roleTags={roleTags}
+              defensiveLine={showTacticalLines ? defensiveLine : undefined}
+              pressingLine={showTacticalLines ? pressingLine : undefined}
+              onDefensiveLineDrag={setDefensiveLine}
+              onPressingLineDrag={setPressingLine}
+              highlightDropPos={highlightDropPos}
             />
 
             {/* Role picker inline */}
             {editingRoleSlotId && assignments[editingRoleSlotId] != null && (() => {
               const slotPlayer = players.find(p => p.id === assignments[editingRoleSlotId]);
-              const slotInfo = formation.slots.find(s => s.id === editingRoleSlotId);
+              const slotLabel = resolvedLabels[editingRoleSlotId] ?? '';
               return (
                 <div className="mt-2 p-3 rounded-lg bg-surface-2 border border-surface-5">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-txt-muted">Role for #{slotPlayer?.jerseyNumber} {slotPlayer?.name} ({slotInfo?.label})</span>
+                    <span className="text-xs text-txt-muted">Role for #{slotPlayer?.jerseyNumber} {slotPlayer?.name} ({slotLabel})</span>
                     <button onClick={() => setEditingRoleSlotId(null)} className="text-xs text-txt-faint hover:text-txt transition-colors">✕</button>
                   </div>
                   <RolePicker

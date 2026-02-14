@@ -44,6 +44,9 @@ export interface LineupEntry {
   playerId: number;
   slotId: string;
   roleTag?: string;
+  x?: number;         // 0-100 freeform position (left to right)
+  y?: number;         // 0-100 freeform position (0=own goal, 100=opponent)
+  label?: string;     // position label override for freeform placements
 }
 
 export interface Opponent {
@@ -77,6 +80,8 @@ export interface Match {
   tacticalIntentTags?: string[];
   inGameNotes?: SessionNote[];
   keyTags?: string[];
+  defensiveLine?: number;  // y-coordinate 0-100 (data coords)
+  pressingLine?: number;   // y-coordinate 0-100 (data coords)
 }
 
 export interface SessionNote {
@@ -94,6 +99,8 @@ export interface LineupTemplate {
   bench?: number[];
   matchId?: number;
   createdAt: string;
+  defensiveLine?: number;
+  pressingLine?: number;
 }
 
 export type SessionType = 'technical' | 'tactical' | 'physical' | 'fitness' | 'recovery';
@@ -310,6 +317,21 @@ class BootroomDatabase extends Dexie {
     });
     // v7: adds activities and sessionTemplates tables
     this.version(7).stores({
+      teams: '++id, name',
+      players: '++id, teamId, jerseyNumber',
+      matches: '++id, teamId, date',
+      practices: '++id, teamId, date',
+      seasonBlocks: '++id, teamId, startDate',
+      periodizationBlocks: '++id, teamId, type, startDate',
+      opponents: '++id, teamId',
+      lineupTemplates: '++id, teamId, matchId',
+      playerEvaluations: '++id, playerId, teamId, date',
+      playerStats: '++id, playerId, teamId, matchId, date',
+      activities: '++id, category, isBuiltIn',
+      sessionTemplates: '++id, sessionType, isBuiltIn',
+    });
+    // v8: freeform lineup positions (x/y/label on LineupEntry) + tactical lines on Match/LineupTemplate
+    this.version(8).stores({
       teams: '++id, name',
       players: '++id, teamId, jerseyNumber',
       matches: '++id, teamId, date',
