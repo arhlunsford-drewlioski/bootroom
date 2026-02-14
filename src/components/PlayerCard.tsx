@@ -603,13 +603,17 @@ function PositionTagPicker({ playerId }: { playerId: number }) {
 interface PlayerCardProps {
   player: Player;
   onDelete: (playerId: number) => void;
-  onUpdateRole: (playerId: number, role: string | undefined) => void;
+  onUpdate?: () => void;
 }
 
-export default function PlayerCard({ player, onDelete }: PlayerCardProps) {
+export default function PlayerCard({ player, onDelete, onUpdate }: PlayerCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [positionsOpen, setPositionsOpen] = useState(false);
   const [evalOpen, setEvalOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [editName, setEditName] = useState(player.name);
+  const [editNumber, setEditNumber] = useState(String(player.jerseyNumber));
 
   // Load eval averages for preview pills
   const evaluations = useLiveQuery(
@@ -658,7 +662,7 @@ export default function PlayerCard({ player, onDelete }: PlayerCardProps) {
         onClick={() => setExpanded(!expanded)}
       >
         {/* Jersey number badge */}
-        <div className="w-10 h-10 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-accent text-sm font-bold shrink-0">
+        <div className="w-10 h-10 rounded-full bg-accent text-surface-0 flex items-center justify-center text-sm font-bold shrink-0">
           {player.jerseyNumber}
         </div>
 
@@ -712,8 +716,24 @@ export default function PlayerCard({ player, onDelete }: PlayerCardProps) {
           </div>
         )}
 
-        {/* Delete + Chevron */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Edit + Delete + Chevron */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setEditName(livePlayer?.name ?? player.name);
+              setEditNumber(String(livePlayer?.jerseyNumber ?? player.jerseyNumber));
+              setEditingInfo(true);
+              if (!expanded) setExpanded(true);
+            }}
+            className="text-txt-faint hover:text-accent transition-colors text-xs p-1"
+            title="Edit player"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
           <button
             onClick={e => { e.stopPropagation(); onDelete(player.id!); }}
             className="text-txt-faint hover:text-red-400 transition-colors text-xs p-1"
@@ -735,9 +755,72 @@ export default function PlayerCard({ player, onDelete }: PlayerCardProps) {
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-surface-5">
-          {/* Position tags */}
-          <div className="px-4 pt-3 pb-2">
-            <PositionTagPicker playerId={player.id!} />
+          {/* Edit name/number (shown when edit icon clicked) */}
+          {editingInfo && (
+            <div className="px-4 pt-3 pb-3 border-b border-surface-5">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-medium text-txt-faint mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="h-8 w-full rounded-md border border-surface-5 bg-surface-0 px-2.5 text-xs text-txt focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                    autoFocus
+                  />
+                </div>
+                <div className="w-20">
+                  <label className="block text-[10px] font-medium text-txt-faint mb-1">#</label>
+                  <input
+                    type="number"
+                    value={editNumber}
+                    onChange={e => setEditNumber(e.target.value)}
+                    className="h-8 w-full rounded-md border border-surface-5 bg-surface-0 px-2.5 text-xs text-txt focus:outline-none focus:ring-1 focus:ring-accent/40 focus:border-accent/40 transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!editName.trim() || !editNumber) return;
+                    await db.players.update(player.id!, {
+                      name: editName.trim(),
+                      jerseyNumber: parseInt(editNumber),
+                    });
+                    setEditingInfo(false);
+                    onUpdate?.();
+                  }}
+                  className="h-8 px-3 rounded-md text-xs font-medium bg-accent text-surface-0 hover:bg-accent-dark transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingInfo(false)}
+                  className="h-8 px-3 rounded-md text-xs font-medium bg-surface-3 text-txt-muted hover:bg-surface-4 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Positions accordion */}
+          <div className="border-b border-surface-5">
+            <button
+              onClick={() => setPositionsOpen(!positionsOpen)}
+              className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-surface-2/50 transition-colors"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wider text-txt-faint">Positions</span>
+              <svg
+                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                className={`text-txt-faint transition-transform ${positionsOpen ? 'rotate-90' : ''}`}
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+            {positionsOpen && (
+              <div className="px-4 pb-4">
+                <PositionTagPicker playerId={player.id!} />
+              </div>
+            )}
           </div>
 
           {/* Stats accordion */}

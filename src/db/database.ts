@@ -8,6 +8,7 @@ export interface Team {
   gameFormat: GameFormat;
   primaryColor?: string;
   secondaryColor?: string;
+  logo?: string;
   createdAt: Date;
 }
 
